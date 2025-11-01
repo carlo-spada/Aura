@@ -54,6 +54,8 @@ def main() -> int:
     print("\nNext actions:")
     print("- Initialize DB: python -m src.db.init_db")
     print("- Ingest RemoteOK jobs: python -m src.ingestion.remoteok --days 7")
+    print("- Embed jobs: python -m src.embeddings.encoder embed")
+    print("- Build FAISS index: python -m src.embeddings.encoder index")
     print("- Run dashboard stub: streamlit run src/dashboard/app.py")
     return 0
 

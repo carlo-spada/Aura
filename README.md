@@ -15,7 +15,10 @@ AURA is an autonomous system that discovers jobs, ranks them using semantic sear
    - `python -m src.db.init_db`
 3. Ingest recent jobs (RemoteOK, last 7 days):
    - `python -m src.ingestion.remoteok --days 7`
-4. Run the bootstrap:
+4. Generate embeddings and build FAISS index:
+   - `python -m src.embeddings.encoder embed`
+   - `python -m src.embeddings.encoder index`
+5. Run the bootstrap:
    - `python -m src.main`
 
 ### Docker
@@ -27,6 +30,9 @@ AURA is an autonomous system that discovers jobs, ranks them using semantic sear
 - Build images: `docker compose build`
 - Run CLI bootstrap (one-shot): `docker compose run --rm aura` (runs `python -m src.main`)
 - Ingest recent jobs (inside container): `docker compose run --rm aura python -m src.ingestion.remoteok --days 7`
+ - Embed and index (inside container):
+   - `docker compose run --rm aura python -m src.embeddings.encoder embed`
+   - `docker compose run --rm aura python -m src.embeddings.encoder index`
 - Run dashboard (long-running): `docker compose up -d dashboard` then open http://localhost:8501
 - Stop all: `docker compose down`
 - Convenience targets also available via `Makefile`:
