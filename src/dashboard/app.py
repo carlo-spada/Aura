@@ -6,6 +6,7 @@ import json
 import sqlite3
 from pathlib import Path
 from typing import List, Tuple
+import datetime as dt
 
 import numpy as np
 import streamlit as st
@@ -92,7 +93,7 @@ if metrics_path.exists():
     except Exception:
         pass
 
-tab_overview, tab_jobs, tab_search = st.tabs(["Overview", "Jobs", "Search"])
+tab_overview, tab_jobs, tab_search, tab_rate = st.tabs(["Overview", "Jobs", "Search", "Rate"]) 
 
 with tab_overview:
     st.write("Use the tabs to browse ingested jobs or search semantically using the FAISS index.")
@@ -143,3 +144,63 @@ with tab_search:
                         f"**{row['title']}** — {row['company']} | {row['location'] or 'N/A'}  ")
                     st.markdown(f"Score: `{score:.3f}` | [Job Link]({row['url']}) | Posted: {row['date_posted'] or 'N/A'}")
                     st.markdown("---")
+
+with tab_rate:
+    if not db_path.exists():
+        st.warning("Database not found. Run the ingestion and DB init steps first.")
+    else:
+        conn = get_db_conn(db_path)
+        jobs = conn.execute(
+            "SELECT id, title, company FROM jobs ORDER BY date_posted DESC NULLS LAST, id DESC LIMIT 200"
+        ).fetchall()
+        if not jobs:
+            st.info("No jobs available to rate.")
+        else:
+            job_options = {f"{j['title']} — {j['company']} (#{j['id']})": j["id"] for j in jobs}
+            sel = st.selectbox("Select job to rate", list(job_options.keys()))
+            job_id = job_options[sel]
+
+            c1, c2 = st.columns(2)
+            with c1:
+                fit = st.slider("Fit score", 1, 10, 7)
+                interest = st.slider("Interest score", 1, 10, 7)
+            with c2:
+                prestige = st.slider("Prestige score", 1, 10, 5)
+                location = st.slider("Location score", 1, 10, 6)
+            comment = st.text_area("Comment (optional)", "")
+            if st.button("Submit rating"):
+                try:
+                    conn.execute(
+                        """
+                        INSERT INTO ratings (job_id, fit_score, interest_score, prestige_score, location_score, comment, timestamp)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            int(job_id),
+                            int(fit),
+                            int(interest),
+                            int(prestige),
+                            int(location),
+                            (comment or "").strip() or None,
+                            dt.datetime.utcnow().isoformat(timespec="seconds"),
+                        ),
+                    )
+                    conn.commit()
+                    st.success("Rating saved.")
+                except Exception as e:
+                    st.error(f"Failed to save rating: {e}")
+
+        st.subheader("Recent ratings")
+        rows = conn.execute(
+            """
+            SELECT r.id as rating_id, r.timestamp, r.fit_score, r.interest_score, r.prestige_score, r.location_score,
+                   j.title, j.company
+            FROM ratings r JOIN jobs j ON r.job_id = j.id
+            ORDER BY r.timestamp DESC, r.id DESC
+            LIMIT 50
+            """
+        ).fetchall()
+        if rows:
+            st.dataframe([dict(r) for r in rows], use_container_width=True)
+        else:
+            st.info("No ratings yet.")

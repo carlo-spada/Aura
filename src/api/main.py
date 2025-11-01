@@ -163,3 +163,48 @@ def search(
         out.append(ScoredJob(**dict(r), score=float(scores[idx])))
     return out
 
+
+class RatingIn(BaseModel):
+    job_id: int
+    fit_score: int
+    interest_score: int
+    prestige_score: int
+    location_score: int
+    comment: Optional[str] = None
+
+
+@app.post("/ratings")
+def create_rating(r: RatingIn) -> dict:
+    db_path = _db_path()
+    if not db_path.exists():
+        raise HTTPException(status_code=503, detail="Database not initialized")
+    # validate scores 1..10
+    for k in ("fit_score", "interest_score", "prestige_score", "location_score"):
+        v = getattr(r, k)
+        if not (1 <= v <= 10):
+            raise HTTPException(status_code=422, detail=f"{k} must be between 1 and 10")
+
+    import datetime as dt
+
+    with sqlite3.connect(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        cur = conn.execute("SELECT id FROM jobs WHERE id = ?", (r.job_id,))
+        if not cur.fetchone():
+            raise HTTPException(status_code=404, detail="job not found")
+        conn.execute(
+            """
+            INSERT INTO ratings (job_id, fit_score, interest_score, prestige_score, location_score, comment, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                r.job_id,
+                r.fit_score,
+                r.interest_score,
+                r.prestige_score,
+                r.location_score,
+                (r.comment or "").strip() or None,
+                dt.datetime.utcnow().isoformat(timespec="seconds"),
+            ),
+        )
+        conn.commit()
+    return {"ok": True}
