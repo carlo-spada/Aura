@@ -42,3 +42,6 @@ AURA is an autonomous system that discovers jobs, ranks them using semantic sear
 - Implement scrapers in `src/ingestion/` and wire to DB
 - Add embedding generation and ranking in `src/embeddings/` and `src/ranking/`
 - Flesh out the feedback loop, training, RL, and generation modules
+
+## License
+MIT — see `LICENSE` for details.
