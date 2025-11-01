@@ -40,6 +40,14 @@ docker compose -f docker-compose.prod.yml run --rm aura python -m src.embeddings
 docker compose -f docker-compose.prod.yml run --rm aura python -m src.embeddings.encoder index
 ```
 
+### Migrate existing local SQLite data (optional)
+If you've been running locally with SQLite and want to import that data to Postgres:
+```
+# Ensure DATABASE_URL points to Postgres (compose.prod does this by default)
+docker compose -f docker-compose.prod.yml run --rm aura python -m src.db.migrate_sqlite_to_postgres --sqlite ./data/jobs.db
+```
+Target DB should be empty (no rows in jobs/ratings/outcomes) unless you pass `--force`.
+
 ### Start services
 ```
 # Start API, dashboard, Postgres, and Caddy (HTTPS terminator)
