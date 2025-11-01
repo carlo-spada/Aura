@@ -1,0 +1,31 @@
+{
+  "name": "Aura Dev",
+  "dockerFile": "Dockerfile",
+  "context": "..",
+  "workspaceFolder": "/app",
+  "runArgs": [
+    "-v", "${localWorkspaceFolder}/data:/app/data",
+    "-v", "${localWorkspaceFolder}/models:/app/models",
+    "-v", "${localWorkspaceFolder}/logs:/app/logs",
+    "-v", "${localWorkspaceFolder}/outputs:/app/outputs"
+  ],
+  "forwardPorts": [8501],
+  "postCreateCommand": "python -m pip install --upgrade pip",
+  "remoteEnv": {
+    "PYTHONPATH": "/app/src",
+    "PYTHONUNBUFFERED": "1"
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.testing.pytestEnabled": true
+      },
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-azuretools.vscode-docker"
+      ]
+    }
+  }
+}

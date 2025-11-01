@@ -1,0 +1,43 @@
+services:
+  aura:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: aura:latest
+    container_name: aura-app
+    profiles: ["cli"]
+    working_dir: /app
+    command: ["python", "-m", "src.main"]
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app/src
+    volumes:
+      - ./src:/app/src:rw
+      - ./config.yaml:/app/config.yaml:ro
+      - ./data:/app/data:rw
+      - ./models:/app/models:rw
+      - ./logs:/app/logs:rw
+      - ./outputs:/app/outputs:rw
+    restart: "no"
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: aura:latest
+    container_name: aura-dashboard
+    working_dir: /app
+    command: ["streamlit", "run", "src/dashboard/app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app/src
+    volumes:
+      - ./src:/app/src:rw
+      - ./config.yaml:/app/config.yaml:ro
+      - ./data:/app/data:rw
+      - ./models:/app/models:rw
+      - ./logs:/app/logs:rw
+      - ./outputs:/app/outputs:rw
+    ports:
+      - "8501:8501"
+    restart: unless-stopped
