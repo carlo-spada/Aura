@@ -1,0 +1,110 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: aura-db
+    environment:
+      - POSTGRES_DB=aura
+      - POSTGRES_USER=aura
+      - POSTGRES_PASSWORD=aura
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aura -d aura"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: aura:latest
+    container_name: aura-api
+    working_dir: /app
+    command: ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app/src
+      - DATABASE_URL=postgresql+psycopg://aura:aura@db:5432/aura
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./src:/app/src:ro
+      - ./config.yaml:/app/config.yaml:ro
+      - ./data:/app/data:rw
+      - ./models:/app/models:rw
+      - ./logs:/app/logs:rw
+      - ./outputs:/app/outputs:rw
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: aura:latest
+    container_name: aura-dashboard
+    working_dir: /app
+    command: ["streamlit", "run", "src/dashboard/app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app/src
+      - DATABASE_URL=postgresql+psycopg://aura:aura@db:5432/aura
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./src:/app/src:ro
+      - ./config.yaml:/app/config.yaml:ro
+      - ./data:/app/data:rw
+      - ./models:/app/models:rw
+      - ./logs:/app/logs:rw
+      - ./outputs:/app/outputs:rw
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  aura:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: aura:latest
+    container_name: aura-cli
+    working_dir: /app
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app/src
+      - DATABASE_URL=postgresql+psycopg://aura:aura@db:5432/aura
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./src:/app/src:ro
+      - ./config.yaml:/app/config.yaml:ro
+      - ./data:/app/data:rw
+      - ./models:/app/models:rw
+      - ./logs:/app/logs:rw
+      - ./outputs:/app/outputs:rw
+    depends_on:
+      - db
+    restart: "no"
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: aura-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - ACME_EMAIL=${ACME_EMAIL}
+      - AURA_DOMAIN=${AURA_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - dashboard
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

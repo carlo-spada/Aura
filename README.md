@@ -62,6 +62,9 @@ AURA is an autonomous system that discovers jobs, ranks them using semantic sear
 
 Note: In Docker, Postgres is used by default. For local dev without Docker you can omit `DATABASE_URL` to use SQLite.
 
+## Production Deployment
+- See `DEPLOYMENT.md` for a step-by-step guide using Docker Compose and Caddy (HTTPS) on a small VPS.
+
 ### Project Layout
 - `src/` core modules and pipelines
 - `data/` local database, metrics, artifacts
