@@ -15,6 +15,9 @@ COPY config.yaml ./config.yaml
 RUN mkdir -p /app/data /app/logs /app/outputs /app/models
 
 ENV PYTHONPATH=/app/src \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    HF_HOME=/app/models \
+    TRANSFORMERS_CACHE=/app/models \
+    SENTENCE_TRANSFORMERS_HOME=/app/models
 
 CMD ["python", "-m", "src.main"]

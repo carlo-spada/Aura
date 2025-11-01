@@ -18,3 +18,5 @@ reportlab
 rich
 click
 python-dotenv
+fastapi
+uvicorn

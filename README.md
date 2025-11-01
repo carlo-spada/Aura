@@ -21,6 +21,13 @@ AURA is an autonomous system that discovers jobs, ranks them using semantic sear
 5. Run the bootstrap:
    - `python -m src.main`
 
+### API (FastAPI)
+- Local:
+  - `uvicorn src.api.main:app --reload --port 8000`
+  - Endpoints: `GET /healthz`, `GET /jobs?limit=50&offset=0[&q=...]`, `GET /search?q=...&k=10`
+- Docker:
+  - `docker compose up -d api` then open http://localhost:8000/healthz
+
 ### Docker
 - Build + run (single container):
   - `docker build -t aura .`
@@ -34,10 +41,12 @@ AURA is an autonomous system that discovers jobs, ranks them using semantic sear
    - `docker compose run --rm aura python -m src.embeddings.encoder embed`
    - `docker compose run --rm aura python -m src.embeddings.encoder index`
 - Run dashboard (long-running): `docker compose up -d dashboard` then open http://localhost:8501
+- Run API (long-running): `docker compose up -d api` then open http://localhost:8000/healthz
 - Stop all: `docker compose down`
 - Convenience targets also available via `Makefile`:
   - `make run` (CLI one-shot), `make up-dashboard`, `make down`, `make logs`, `make bash`
   - Weekly pipeline one-shot: `make weekly` (ingest → embed → index)
+ - Compose reads `.env` automatically for settings like `LOG_LEVEL`.
 
 ### Project Layout
 - `src/` core modules and pipelines
@@ -48,6 +57,7 @@ AURA is an autonomous system that discovers jobs, ranks them using semantic sear
 ### Configuration
 - Edit `config.yaml` to customize models, providers, and schedule.
  - Copy `.env.sample` to `.env` and fill values (e.g., `LOG_LEVEL`, API keys).
+ - Logging: set `LOG_LEVEL`, optional `LOG_FILE` for file output. Default human-friendly console logs.
 
 ### Next Steps
 - Implement scrapers in `src/ingestion/` and wire to DB

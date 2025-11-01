@@ -52,6 +52,10 @@ CREATE TABLE IF NOT EXISTS outcomes (
     timestamp DATETIME,
     FOREIGN KEY(job_id) REFERENCES jobs(id)
 );
+
+-- Helpful indexes
+CREATE INDEX IF NOT EXISTS idx_jobs_url ON jobs(url);
+CREATE INDEX IF NOT EXISTS idx_jobs_date_posted ON jobs(date_posted);
 """
 
 

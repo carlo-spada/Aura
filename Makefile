@@ -22,6 +22,9 @@ up: compose-cmd
 up-dashboard: compose-cmd
 	$(DC) up -d dashboard
 
+up-api: compose-cmd
+	$(DC) up -d api
+
 down: compose-cmd
 	$(DC) down
 

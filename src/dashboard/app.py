@@ -106,8 +106,10 @@ with tab_jobs:
         st.warning("Database not found. Run the ingestion and DB init steps first.")
     else:
         conn = get_db_conn(db_path)
+        # SQLite doesn't support "NULLS LAST"; simulate with boolean expression
         cur = conn.execute(
-            "SELECT id, title, company, location, date_posted, url FROM jobs ORDER BY date_posted DESC NULLS LAST, id DESC LIMIT 250"
+            "SELECT id, title, company, location, date_posted, url FROM jobs "
+            "ORDER BY (date_posted IS NULL), date_posted DESC, id DESC LIMIT 250"
         )
         rows = cur.fetchall()
         st.subheader(f"Jobs (showing {len(rows)} most recent)")
