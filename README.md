@@ -37,6 +37,7 @@ AURA is an autonomous system that discovers jobs, ranks them using semantic sear
 
 ### Configuration
 - Edit `config.yaml` to customize models, providers, and schedule.
+ - Copy `.env.sample` to `.env` and fill values (e.g., `LOG_LEVEL`, API keys).
 
 ### Next Steps
 - Implement scrapers in `src/ingestion/` and wire to DB
@@ -45,3 +46,11 @@ AURA is an autonomous system that discovers jobs, ranks them using semantic sear
 
 ## License
 MIT — see `LICENSE` for details.
+
+## Development
+- Install dev tooling: `pip install -r requirements-dev.txt`
+- Enable pre-commit hooks: `pre-commit install` (then hooks run on each commit)
+- Run formatters locally:
+  - `black .`
+  - `ruff check .` (auto-fix: `ruff check . --fix`)
+- CI: GitHub Actions run lint, type-checks, tests (if any), and Docker build on PRs/pushes to `main`.

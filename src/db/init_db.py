@@ -9,7 +9,10 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
+import logging
+
 from ..config import load_config
+from ..logging_config import setup_logging
 
 
 SCHEMA_SQL = """
@@ -60,13 +63,15 @@ def init_sqlite(db_path: Path) -> None:
 
 
 def main() -> int:
+    setup_logging()
+    log = logging.getLogger("aura.db.init")
     cfg = load_config()
     db_path = Path(cfg["paths"]["data_dir"]) / "jobs.db"
     init_sqlite(db_path)
     print(f"Initialized DB at: {db_path}")
+    log.info("Initialized DB at %s", db_path)
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

@@ -11,6 +11,9 @@ import os
 from pathlib import Path
 
 from rich import print
+import logging
+
+from .logging_config import setup_logging
 
 from .config import load_config
 
@@ -37,9 +40,12 @@ def ensure_dirs(paths: dict) -> None:
 
 
 def main() -> int:
+    setup_logging()
+    log = logging.getLogger("aura.main")
     cfg = load_config()
     ensure_dirs(cfg["paths"])
 
+    log.info("AURA bootstrap ready.")
     print("[bold green]AURA[/bold green] bootstrap ready.")
     print("Config loaded from:", os.path.abspath("config.yaml"))
     print("Data directory:", cfg["paths"]["data_dir"]) 
