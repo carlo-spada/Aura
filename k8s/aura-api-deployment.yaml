@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aura-api
+  namespace: aura
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aura-api
+  template:
+    metadata:
+      labels:
+        app: aura-api
+    spec:
+      containers:
+        - name: api
+          image: your-docker-repo/aura:latest
+          imagePullPolicy: IfNotPresent
+          command: ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+          env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: PYTHONPATH
+              value: /app/src
+            - name: LOG_LEVEL
+              valueFrom:
+                secretKeyRef:
+                  name: aura-env
+                  key: LOG_LEVEL
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: aura-env
+                  key: DATABASE_URL
+          ports:
+            - containerPort: 8000

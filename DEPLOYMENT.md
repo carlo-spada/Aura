@@ -58,6 +58,26 @@ Verify:
 - API health: https://aura.yourdomain.com/healthz
 - Dashboard: https://aura.yourdomain.com/
 
+### Kubernetes (optional)
+Prefer managed Postgres and an image in a registry. Two options are included:
+
+1) Helm chart (`charts/aura`)
+- Set values:
+  - `image.repository` and `image.tag`
+  - `env.DATABASE_URL` (to a managed Postgres)
+  - `ingress.host` to your domain (e.g., aura.carlospada.me)
+- Install:
+```
+helm upgrade --install aura charts/aura \
+  --set image.repository=your-docker-repo/aura \
+  --set image.tag=latest \
+  --set env.DATABASE_URL='postgresql+psycopg://user:pass@host:5432/db' \
+  --set ingress.host='aura.carlospada.me'
+```
+
+2) Raw manifests (`k8s/`)
+- Create namespace and secret, edit image + host, and apply the files as shown in `k8s/README.md`.
+
 ### Schedule weekly pipeline
 On the VPS:
 ```
