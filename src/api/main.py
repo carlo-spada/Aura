@@ -18,6 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from ..config import load_config
+from ..logging_config import setup_logging
 from ..ranking.rank import rank as rank_fn, RankedItem
 
 
@@ -87,6 +88,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+def _startup_logging() -> None:
+    # Configure logging (console + rotating file)
+    setup_logging()
 
 
 @app.get("/healthz")

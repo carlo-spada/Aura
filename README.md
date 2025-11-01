@@ -85,3 +85,10 @@ MIT — see `LICENSE` for details.
   - `black .`
   - `ruff check .` (auto-fix: `ruff check . --fix`)
 - CI: GitHub Actions run lint, type-checks, tests (if any), and Docker build on PRs/pushes to `main`.
+
+## Logging
+- Writes to `logs/aura.log` with rotation (default 5MB, 3 backups) and console.
+- Configure via env vars:
+  - `LOG_LEVEL` (e.g., `INFO`, `DEBUG`)
+  - `LOG_FILE` (override path; default resolves from `paths.logs_dir`)
+  - `LOG_MAX_BYTES` (bytes), `LOG_BACKUP_COUNT` (files)
