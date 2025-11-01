@@ -1,2 +1,2 @@
-"""Job ranking logic combining embeddings and metadata heuristics."""
+"""Ranking utilities for AURA."""
 

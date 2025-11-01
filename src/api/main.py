@@ -18,6 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from ..config import load_config
+from ..ranking.rank import rank as rank_fn, RankedItem
 
 
 class JobOut(BaseModel):
@@ -161,6 +162,32 @@ def search(
     for r in sorted(rows, key=lambda r: order.get(int(r["id"]), 1_000_000)):
         idx = order[int(r["id"])]
         out.append(ScoredJob(**dict(r), score=float(scores[idx])))
+    return out
+
+
+@app.get("/rank", response_model=List[ScoredJob])
+def rank_endpoint(
+    q: str = Query(..., min_length=2),
+    k: int = Query(50, ge=1, le=200),
+    top: int = Query(10, ge=1, le=50),
+) -> List[ScoredJob]:
+    try:
+        items: List[RankedItem] = rank_fn(q, k=k, top=top)
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    out: List[ScoredJob] = []
+    for it in items:
+        out.append(
+            ScoredJob(
+                id=it.id,
+                title=it.title,
+                company=it.company,
+                location=it.location_str,
+                date_posted=it.date_posted,
+                url=it.url,
+                score=float(it.score),
+            )
+        )
     return out
 
 

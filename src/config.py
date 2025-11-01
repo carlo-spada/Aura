@@ -17,7 +17,16 @@ DEFAULTS: Dict[str, Any] = {
         "models_dir": "./models",
         "outputs_dir": "./outputs",
         "logs_dir": "./logs",
-    }
+    },
+    "ranking": {
+        "weights": {
+            "semantic": 0.7,
+            "recency": 0.25,
+            "location": 0.05,
+        },
+        "decay_days": 30,
+        "remote_bonus": 1.0,
+    },
 }
 
 
@@ -38,4 +47,3 @@ def load_config(path: str | Path = "config.yaml") -> Dict[str, Any]:
     else:
         data = {}
     return deep_merge(DEFAULTS, data)
-

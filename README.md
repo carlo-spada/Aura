@@ -18,7 +18,9 @@ AURA is an autonomous system that discovers jobs, ranks them using semantic sear
 4. Generate embeddings and build FAISS index:
    - `python -m src.embeddings.encoder embed`
    - `python -m src.embeddings.encoder index`
-5. Run the bootstrap:
+5. Rank jobs by combined score:
+   - `python -m src.ranking.rank --q "data scientist remote nlp" --k 50 --top 10`
+6. Run the bootstrap:
    - `python -m src.main`
 
 ### API (FastAPI)
@@ -42,6 +44,8 @@ AURA is an autonomous system that discovers jobs, ranks them using semantic sear
    - `docker compose run --rm aura python -m src.embeddings.encoder index`
 - Run dashboard (long-running): `docker compose up -d dashboard` then open http://localhost:8501
 - Run API (long-running): `docker compose up -d api` then open http://localhost:8000/healthz
+  - Search: `GET /search?q=...&k=10`
+  - Rank: `GET /rank?q=...&k=50&top=10`
 - Stop all: `docker compose down`
 - Convenience targets also available via `Makefile`:
   - `make run` (CLI one-shot), `make up-dashboard`, `make down`, `make logs`, `make bash`
