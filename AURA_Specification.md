@@ -314,5 +314,104 @@ schedule:
 
 ---
 
-**End of specification.**
+---
 
+## 16. Deployment & Hosting (Production)
+
+- Recommended topology:
+  - Portfolio: Vercel or Cloudflare Pages (root domain).
+  - Apps (e.g., AURA): single VPS (Hetzner CX11 / DO $6) running Docker Compose.
+  - Reverse proxy: Caddy with automatic HTTPS and subdomain routing (e.g., aura.yourdomain).
+- Runtime containers:
+  - `aura` (CLI tasks + pipelines)
+  - `dashboard` (Streamlit UI)
+  - optional: `api` (FastAPI) for multi-user later
+- Storage & backups:
+  - Persist `data/` (SQLite/FAISS) on disk volume; nightly tarball or provider snapshots.
+  - Secret management via `.env` mounted as read-only.
+
+## 17. Multi‑User, Auth & Billing (SaaS Upgrade)
+
+- Target: $5/mo plan with Stripe billing.
+- Auth: OAuth (Google/Apple/GitHub) or email magic links; sessions via JWT.
+- Data model additions:
+  - `users` (id, email, name, auth_provider, created_at)
+  - `subscriptions` (user_id, stripe_customer_id, status)
+  - Add `user_id` FK to `jobs`, `ratings`, `outcomes` (or scope jobs per user workspace).
+- API access control: per‑user data isolation; rate limiting.
+- Billing: Stripe Checkout + Billing Portal; webhook updates subscription status.
+
+## 18. PWA Frontend (Installable App)
+
+- Tech: Next.js + next-pwa (or Astro with Workbox) hosted on Vercel.
+- Features:
+  - Web app manifest (icons, theme, display standalone) and service worker caching.
+  - Pages: Login, Jobs, Search, Rate, Profile/Subscription.
+  - Calls backend API for data; optional offline read cache.
+- iOS notes: PWA installable via “Add to Home Screen”; notifications limited; background sync limited.
+
+## 19. API Layer (FastAPI)
+
+- Endpoints (v1):
+  - `POST /auth/*` (provider callback or email link)
+  - `GET /jobs` (filter, pagination)
+  - `GET /search?q=…` (FAISS/pgvector top‑N)
+  - `POST /ratings` (store feedback)
+  - `GET /metrics` (for dashboard)
+  - `POST /stripe/webhook` (subscription lifecycle)
+- AuthN/Z: JWT in Authorization header; middleware enforces user scoping.
+- Background jobs: keep ingestion/embedding/index as CLI run by cron/systemd timer.
+
+## 20. Scheduling & Automation
+
+- Weekly pipeline runner (`src/pipelines/weekly.py`): ingest → embed → index.
+- Scheduling options:
+  - Host cron: run Compose task on Fridays 09:00.
+  - Systemd timers on VPS for more control.
+- Logging: append to `logs/weekly.log`; rotate via `logrotate` or Python rotating handlers.
+
+## 21. Observability
+
+- Logging: structured logs; console + file handler (`logs/`).
+- Metrics: extend `data/metrics.json` or move to SQLite table `metrics` with timestamped records.
+- Health checks: `/healthz` on API; simple status page.
+
+## 22. CI/CD & DevX
+
+- GitHub Actions pipeline (lint, format check, mypy, tests, docker build).
+- Pre-commit hooks (ruff/black) to enforce consistency.
+- Future: build/push production images; SSH deploy to VPS or use actions‑rs/ssh.
+
+## 23. Domain & DNS
+
+- Primary domain: prefer no dash (easier to type/say). e.g., `carlospada.me`.
+- Registrar: Cloudflare Registrar (at‑cost, privacy) or Porkbun.
+- DNS:
+  - Root/`www` → Portfolio host (Vercel/Pages)
+  - `aura` → VPS A/AAAA record; Caddy terminates TLS and proxies → dashboard/API
+
+## 24. Migration Plan: SQLite → Postgres
+
+- When to migrate: multi-user, heavy concurrency, advanced search (JSONB/FTS/pgvector).
+- Steps:
+  - Introduce SQLAlchemy ORM models + Alembic migrations.
+  - Add `DATABASE_URL` env with Postgres and dual‑stack code paths.
+  - Data migration: export SQLite → import into Postgres; rebuild FAISS (or adopt pgvector).
+  - Update ingestion/embedding to respect `user_id` scoping.
+
+## 25. Revised Near‑Term Roadmap (MVP → SaaS)
+
+1) Ingestion MVP (RemoteOK) — done
+2) Embeddings + FAISS — done
+3) Dashboard basic search/list — done
+4) API scaffold (FastAPI) — next
+5) Ratings capture via dashboard/API
+6) Ranking pipeline (semantic + metadata + prefs)
+7) Preference model training (LSTM) and metrics
+8) SaaS foundations: Postgres, auth, Stripe billing
+9) PWA frontend (Next.js) integrated with API
+10) Production deploy: VPS + Caddy + cron; domain on Cloudflare
+
+---
+
+**End of specification.**
