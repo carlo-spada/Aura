@@ -1,5 +1,5 @@
-"""Ingestion layer: scrapers and API clients.
+"""Ingestion package for AURA.
 
-Add individual job source clients here and register them dynamically.
+Contains source-specific clients and normalization utilities.
 """
 

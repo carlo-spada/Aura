@@ -13,7 +13,9 @@ AURA is an autonomous system that discovers jobs, ranks them using semantic sear
    - `pip install -r requirements.txt`
 2. Initialize the local SQLite database:
    - `python -m src.db.init_db`
-3. Run the bootstrap:
+3. Ingest recent jobs (RemoteOK, last 7 days):
+   - `python -m src.ingestion.remoteok --days 7`
+4. Run the bootstrap:
    - `python -m src.main`
 
 ### Docker
@@ -24,6 +26,7 @@ AURA is an autonomous system that discovers jobs, ranks them using semantic sear
 ### Container Tools (Docker Compose)
 - Build images: `docker compose build`
 - Run CLI bootstrap (one-shot): `docker compose run --rm aura` (runs `python -m src.main`)
+- Ingest recent jobs (inside container): `docker compose run --rm aura python -m src.ingestion.remoteok --days 7`
 - Run dashboard (long-running): `docker compose up -d dashboard` then open http://localhost:8501
 - Stop all: `docker compose down`
 - Convenience targets also available via `Makefile`:
