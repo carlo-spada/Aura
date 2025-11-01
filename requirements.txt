@@ -9,6 +9,7 @@ gymnasium
 PyYAML
 SQLAlchemy
 alembic
+psycopg[binary]
 streamlit
 plotly
 matplotlib

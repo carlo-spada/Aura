@@ -7,7 +7,6 @@ Run locally:
 from __future__ import annotations
 
 import json
-import sqlite3
 from functools import lru_cache
 from pathlib import Path
 from typing import List, Optional
@@ -20,6 +19,8 @@ from pydantic import BaseModel
 from ..config import load_config
 from ..logging_config import setup_logging
 from ..ranking.rank import rank as rank_fn, RankedItem
+from ..db.session import get_session, get_database_url
+from ..db.models import Job, Rating
 
 
 class JobOut(BaseModel):
@@ -40,9 +41,9 @@ def get_cfg() -> dict:
     return load_config()
 
 
-def _db_path() -> Path:
+def _index_path() -> Path:
     cfg = get_cfg()
-    return Path(cfg["paths"]["data_dir"]) / "jobs.db"
+    return Path(cfg["paths"]["data_dir"]) / "faiss.index"
 
 
 @lru_cache(maxsize=1)
@@ -59,8 +60,7 @@ def _model():
 def _faiss_index():
     import faiss  # type: ignore
 
-    cfg = get_cfg()
-    idx_path = Path(cfg["paths"]["data_dir"]) / "faiss.index"
+    idx_path = _index_path()
     if not idx_path.exists():
         return None
     return faiss.read_index(str(idx_path))
@@ -98,9 +98,14 @@ def _startup_logging() -> None:
 
 @app.get("/healthz")
 def healthz() -> dict:
-    cfg = get_cfg()
-    db_exists = _db_path().exists()
-    idx_exists = (Path(cfg["paths"]["data_dir"]) / "faiss.index").exists()
+    # DB: attempt a trivial query
+    try:
+        with get_session() as session:
+            session.execute("SELECT 1")
+        db_exists = True
+    except Exception:
+        db_exists = False
+    idx_exists = _index_path().exists()
     return {
         "status": "ok",
         "db": db_exists,
@@ -114,34 +119,26 @@ def list_jobs(
     offset: int = Query(0, ge=0),
     q: Optional[str] = Query(None, description="Simple search over title/company"),
 ) -> List[JobOut]:
-    db_path = _db_path()
-    if not db_path.exists():
-        return []
-    with sqlite3.connect(db_path) as conn:
-        conn.row_factory = sqlite3.Row
+    with get_session() as session:
+        query = session.query(Job.id, Job.title, Job.company, Job.location, Job.date_posted, Job.url)
         if q:
-            cur = conn.execute(
-                """
-                SELECT id, title, company, location, date_posted, url
-                FROM jobs
-                WHERE title LIKE ? OR company LIKE ?
-                ORDER BY date_posted DESC NULLS LAST, id DESC
-                LIMIT ? OFFSET ?
-                """,
-                (f"%{q}%", f"%{q}%", limit, offset),
+            like = f"%{q}%"
+            # ilike on SQLite acts like like; on PG it's case-insensitive
+            query = query.filter((Job.title.ilike(like)) | (Job.company.ilike(like)))
+        # For portability, sort by date_posted desc, id desc
+        query = query.order_by(Job.date_posted.desc().nullslast(), Job.id.desc())
+        rows = [
+            JobOut(
+                id=int(r[0]),
+                title=r[1],
+                company=r[2],
+                location=r[3],
+                date_posted=r[4],
+                url=r[5],
             )
-        else:
-            cur = conn.execute(
-                """
-                SELECT id, title, company, location, date_posted, url
-                FROM jobs
-                ORDER BY date_posted DESC NULLS LAST, id DESC
-                LIMIT ? OFFSET ?
-                """,
-                (limit, offset),
-            )
-        rows = [JobOut(**dict(r)) for r in cur.fetchall()]
-    return rows
+            for r in query.limit(limit).offset(offset).all()
+        ]
+        return rows
 
 
 @app.get("/search", response_model=List[ScoredJob])
@@ -151,24 +148,31 @@ def search(
 ) -> List[ScoredJob]:
     scores, ids = _query_top_k(q, k=k)
 
-    db_path = _db_path()
-    if not db_path.exists():
+    if len(ids) == 0:
         return []
-    placeholders = ",".join(["?"] * len(ids))
-    with sqlite3.connect(db_path) as conn:
-        conn.row_factory = sqlite3.Row
-        cur = conn.execute(
-            f"SELECT id, title, company, location, date_posted, url FROM jobs WHERE id IN ({placeholders})",
-            ids.tolist(),
+    with get_session() as session:
+        rows = (
+            session.query(Job.id, Job.title, Job.company, Job.location, Job.date_posted, Job.url)
+            .filter(Job.id.in_(ids.tolist()))
+            .all()
         )
-        rows = cur.fetchall()
 
     # order by returned ids
     order = {int(i): idx for idx, i in enumerate(ids.tolist())}
     out: List[ScoredJob] = []
-    for r in sorted(rows, key=lambda r: order.get(int(r["id"]), 1_000_000)):
-        idx = order[int(r["id"])]
-        out.append(ScoredJob(**dict(r), score=float(scores[idx])))
+    for r in sorted(rows, key=lambda r: order.get(int(r[0]), 1_000_000)):
+        idx = order[int(r[0])]
+        out.append(
+            ScoredJob(
+                id=int(r[0]),
+                title=r[1],
+                company=r[2],
+                location=r[3],
+                date_posted=r[4],
+                url=r[5],
+                score=float(scores[idx]),
+            )
+        )
     return out
 
 
@@ -209,8 +213,11 @@ class RatingIn(BaseModel):
 
 @app.post("/ratings")
 def create_rating(r: RatingIn) -> dict:
-    db_path = _db_path()
-    if not db_path.exists():
+    # validate DB reachable
+    try:
+        with get_session() as session:
+            session.execute("SELECT 1")
+    except Exception:
         raise HTTPException(status_code=503, detail="Database not initialized")
     # validate scores 1..10
     for k in ("fit_score", "interest_score", "prestige_score", "location_score"):
@@ -220,25 +227,18 @@ def create_rating(r: RatingIn) -> dict:
 
     import datetime as dt
 
-    with sqlite3.connect(db_path) as conn:
-        conn.row_factory = sqlite3.Row
-        cur = conn.execute("SELECT id FROM jobs WHERE id = ?", (r.job_id,))
-        if not cur.fetchone():
+    with get_session() as session:
+        exists = session.query(Job.id).filter(Job.id == r.job_id).first()
+        if not exists:
             raise HTTPException(status_code=404, detail="job not found")
-        conn.execute(
-            """
-            INSERT INTO ratings (job_id, fit_score, interest_score, prestige_score, location_score, comment, timestamp)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                r.job_id,
-                r.fit_score,
-                r.interest_score,
-                r.prestige_score,
-                r.location_score,
-                (r.comment or "").strip() or None,
-                dt.datetime.utcnow().isoformat(timespec="seconds"),
-            ),
+        rating = Rating(
+            job_id=r.job_id,
+            fit_score=r.fit_score,
+            interest_score=r.interest_score,
+            prestige_score=r.prestige_score,
+            location_score=r.location_score,
+            comment=(r.comment or "").strip() or None,
+            timestamp=dt.datetime.utcnow(),
         )
-        conn.commit()
+        session.add(rating)
     return {"ok": True}

@@ -13,15 +13,15 @@ import argparse
 import datetime as dt
 import json
 import logging
-import sqlite3
 import time
 import urllib.error
 import urllib.request
 from typing import Any, Dict, Iterable, List, Optional
 
 from ..config import load_config
-from ..db.init_db import init_sqlite
 from ..logging_config import setup_logging
+from ..db.session import get_session
+from ..db.models import Job
 
 
 REMOTEOK_API = "https://remoteok.io/api"  # public JSON API
@@ -100,34 +100,9 @@ def filter_recent(items: Iterable[Dict[str, Any]], days: int) -> List[Dict[str, 
     return out
 
 
-def insert_jobs(conn: sqlite3.Connection, jobs: Iterable[Dict[str, Any]]) -> int:
-    cur = conn.cursor()
-    inserted = 0
-    for j in jobs:
-        # de-dupe by URL
-        cur.execute("SELECT id FROM jobs WHERE url = ?", (j["url"],))
-        if cur.fetchone():
-            continue
-        cur.execute(
-            """
-            INSERT INTO jobs (title, company, location, salary_min, salary_max, currency, description, url, date_posted, embedding)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
-            """,
-            (
-                j["title"],
-                j["company"],
-                j.get("location"),
-                j.get("salary_min"),
-                j.get("salary_max"),
-                j.get("currency"),
-                j.get("description"),
-                j["url"],
-                j.get("date_posted"),
-            ),
-        )
-        inserted += 1
-    conn.commit()
-    return inserted
+def insert_jobs(*args, **kwargs) -> int:
+    # Deprecated; kept for compatibility in earlier code paths.
+    return 0
 
 
 def run(days: int = 7) -> int:
@@ -144,15 +119,28 @@ def run(days: int = 7) -> int:
     recent = filter_recent(norm, days)
     log.info("Fetched %d items; %d normalized; %d recent (<=%d days)", len(raw), len(norm), len(recent), days)
 
-    # DB ensure and insert
-    from pathlib import Path as pathlib_Path  # local alias to avoid confusion above
-
-    db_path = pathlib_Path(cfg["paths"]["data_dir"]) / "jobs.db"
-    init_sqlite(db_path)
-    with sqlite3.connect(db_path) as conn:
-        count = insert_jobs(conn, recent)
-    log.info("Inserted %d new jobs into DB at %s", count, db_path)
-    print(f"Inserted {count} new jobs from RemoteOK (last {days} days)")
+    # Insert via ORM with de-dup on URL
+    inserted = 0
+    with get_session() as session:
+        for j in recent:
+            exists = session.query(Job.id).filter(Job.url == j["url"]).first()
+            if exists:
+                continue
+            obj = Job(
+                title=j["title"],
+                company=j["company"],
+                location=j.get("location"),
+                salary_min=j.get("salary_min"),
+                salary_max=j.get("salary_max"),
+                currency=j.get("currency"),
+                description=j.get("description", ""),
+                url=j["url"],
+                date_posted=j.get("date_posted"),
+            )
+            session.add(obj)
+            inserted += 1
+    log.info("Inserted %d new jobs", inserted)
+    print(f"Inserted {inserted} new jobs from RemoteOK (last {days} days)")
     return 0
 
 

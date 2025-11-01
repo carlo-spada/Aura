@@ -15,7 +15,7 @@ import logging
 from pathlib import Path
 
 from ..config import load_config
-from ..db.init_db import init_sqlite
+from ..db.init_db import main as init_db
 from ..embeddings.encoder import build_faiss_index, embed_missing
 from ..ingestion.remoteok import run as ingest_remoteok
 from ..logging_config import setup_logging
@@ -26,9 +26,8 @@ def main() -> int:
     log = logging.getLogger("aura.pipeline.weekly")
     cfg = load_config()
 
-    data_dir = Path(cfg["paths"]["data_dir"]) 
-    db_path = data_dir / "jobs.db"
-    init_sqlite(db_path)
+    # Ensure DB tables exist
+    init_db()
     log.info("Starting weekly pipeline. DB: %s", db_path)
 
     # 1) Ingestion (last 7 days)
@@ -59,4 +58,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

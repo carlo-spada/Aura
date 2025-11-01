@@ -1,79 +1,36 @@
-"""Initialize the local SQLite database for AURA.
+"""Initialize the database for AURA (SQLite or Postgres) via SQLAlchemy.
 
-Creates `jobs`, `ratings`, and `outcomes` tables if they do not exist.
-Run this once after setting up the environment.
+Creates `jobs`, `ratings`, and `outcomes` if they do not exist.
+Use Alembic for schema evolution beyond the initial creation.
 """
 
 from __future__ import annotations
 
-import sqlite3
+import logging
 from pathlib import Path
 
-import logging
-
-from ..config import load_config
+from .models import Base
+from .session import engine, get_database_url
 from ..logging_config import setup_logging
 
 
-SCHEMA_SQL = """
-PRAGMA journal_mode=WAL;
-
-CREATE TABLE IF NOT EXISTS jobs (
-    id INTEGER PRIMARY KEY,
-    title TEXT,
-    company TEXT,
-    location TEXT,
-    salary_min REAL,
-    salary_max REAL,
-    currency TEXT,
-    description TEXT,
-    url TEXT,
-    date_posted DATE,
-    embedding BLOB
-);
-
-CREATE TABLE IF NOT EXISTS ratings (
-    id INTEGER PRIMARY KEY,
-    job_id INTEGER,
-    fit_score INTEGER,
-    interest_score INTEGER,
-    prestige_score INTEGER,
-    location_score INTEGER,
-    comment TEXT,
-    timestamp DATETIME,
-    FOREIGN KEY(job_id) REFERENCES jobs(id)
-);
-
-CREATE TABLE IF NOT EXISTS outcomes (
-    id INTEGER PRIMARY KEY,
-    job_id INTEGER,
-    stage TEXT,
-    reward REAL,
-    timestamp DATETIME,
-    FOREIGN KEY(job_id) REFERENCES jobs(id)
-);
-
--- Helpful indexes
-CREATE INDEX IF NOT EXISTS idx_jobs_url ON jobs(url);
-CREATE INDEX IF NOT EXISTS idx_jobs_date_posted ON jobs(date_posted);
-"""
-
-
-def init_sqlite(db_path: Path) -> None:
+def init_sqlite(db_path: Path) -> None:  # backwards compatibility signature
+    # Ensure parent dir exists when using SQLite
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(db_path) as conn:
-        conn.executescript(SCHEMA_SQL)
-        conn.commit()
+    Base.metadata.create_all(bind=engine)
 
 
 def main() -> int:
     setup_logging()
     log = logging.getLogger("aura.db.init")
-    cfg = load_config()
-    db_path = Path(cfg["paths"]["data_dir"]) / "jobs.db"
-    init_sqlite(db_path)
-    print(f"Initialized DB at: {db_path}")
-    log.info("Initialized DB at %s", db_path)
+    url = get_database_url()
+    # Create parent dir for SQLite
+    if url.startswith("sqlite"):
+        p = Path(url.split("sqlite:///")[-1])
+        p.parent.mkdir(parents=True, exist_ok=True)
+    Base.metadata.create_all(bind=engine)
+    print(f"Initialized DB (URL): {url}")
+    log.info("Initialized DB (URL): %s", url)
     return 0
 
 

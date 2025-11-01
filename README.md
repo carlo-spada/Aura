@@ -30,6 +30,13 @@ AURA is an autonomous system that discovers jobs, ranks them using semantic sear
   - Endpoints: `GET /healthz`, `GET /jobs?limit=50&offset=0[&q=...]`, `GET /search?q=...&k=10`
 - Docker:
   - `docker compose up -d api` then open http://localhost:8000/healthz
+  
+### Database (Postgres by default in Docker)
+- Docker Compose includes a `db` service (Postgres 16). App services use `DATABASE_URL=postgresql+psycopg://aura:aura@db:5432/aura`.
+- Local fallback is SQLite at `./data/jobs.db` if `DATABASE_URL` is unset.
+- Initialize schema:
+  - Quick start: `python -m src.db.init_db` (creates tables from models)
+  - Migrations (Alembic): `alembic upgrade head` (requires `DATABASE_URL` env)
 
 ### Docker
 - Build + run (single container):
@@ -51,7 +58,9 @@ AURA is an autonomous system that discovers jobs, ranks them using semantic sear
 - Convenience targets also available via `Makefile`:
   - `make run` (CLI one-shot), `make up-dashboard`, `make down`, `make logs`, `make bash`
   - Weekly pipeline one-shot: `make weekly` (ingest → embed → index)
- - Compose reads `.env` automatically for settings like `LOG_LEVEL`.
+- Compose reads `.env` automatically for settings like `LOG_LEVEL`.
+
+Note: In Docker, Postgres is used by default. For local dev without Docker you can omit `DATABASE_URL` to use SQLite.
 
 ### Project Layout
 - `src/` core modules and pipelines

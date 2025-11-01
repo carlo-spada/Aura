@@ -1,4 +1,19 @@
 services:
+  db:
+    image: postgres:16-alpine
+    container_name: aura-db
+    environment:
+      - POSTGRES_DB=aura
+      - POSTGRES_USER=aura
+      - POSTGRES_PASSWORD=aura
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aura -d aura"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
   aura:
     build:
       context: .
@@ -11,6 +26,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app/src
+      - DATABASE_URL=postgresql+psycopg://aura:aura@db:5432/aura
     env_file:
       - .env
     volumes:
@@ -20,6 +36,8 @@ services:
       - ./models:/app/models:rw
       - ./logs:/app/logs:rw
       - ./outputs:/app/outputs:rw
+    depends_on:
+      - db
     restart: "no"
 
   dashboard:
@@ -33,6 +51,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app/src
+      - DATABASE_URL=postgresql+psycopg://aura:aura@db:5432/aura
     env_file:
       - .env
     volumes:
@@ -44,6 +63,8 @@ services:
       - ./outputs:/app/outputs:rw
     ports:
       - "8501:8501"
+    depends_on:
+      - db
     restart: unless-stopped
 
   api:
@@ -57,6 +78,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app/src
+      - DATABASE_URL=postgresql+psycopg://aura:aura@db:5432/aura
     volumes:
       - ./src:/app/src:rw
       - ./config.yaml:/app/config.yaml:ro
@@ -66,4 +88,9 @@ services:
       - ./outputs:/app/outputs:rw
     ports:
       - "8000:8000"
+    depends_on:
+      - db
     restart: unless-stopped
+
+volumes:
+  pgdata:

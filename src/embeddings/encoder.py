@@ -14,7 +14,6 @@ import argparse
 import io
 import logging
 import os
-import sqlite3
 from pathlib import Path
 from typing import Iterable, List, Optional, Sequence, Tuple
 
@@ -23,7 +22,8 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 
 from ..config import load_config
-from ..db.init_db import init_sqlite
+from ..db.session import get_session
+from ..db.models import Job
 from ..logging_config import setup_logging
 
 
@@ -55,15 +55,13 @@ def encode_texts(model: SentenceTransformer, texts: Sequence[str], batch_size: i
     return embeds.astype(np.float32, copy=False)
 
 
-def _iter_missing_jobs(conn: sqlite3.Connection, limit: Optional[int] = None) -> Iterable[Tuple[int, str]]:
-    q = "SELECT id, description FROM jobs WHERE embedding IS NULL"
-    if limit:
-        q += " LIMIT ?"
-        cur = conn.execute(q, (limit,))
-    else:
-        cur = conn.execute(q)
-    for row in cur:
-        yield int(row[0]), str(row[1] or "")
+def _iter_missing_jobs(limit: Optional[int] = None) -> Iterable[Tuple[int, str]]:
+    with get_session() as session:
+        q = session.query(Job.id, Job.description).filter(Job.embedding.is_(None))
+        if limit:
+            q = q.limit(limit)
+        for jid, desc in q.all():
+            yield int(jid), str(desc or "")
 
 
 def embed_missing(limit: Optional[int] = None, batch_size: int = 32) -> int:
@@ -71,59 +69,51 @@ def embed_missing(limit: Optional[int] = None, batch_size: int = 32) -> int:
     cfg = load_config()
     model_name = cfg.get("models", {}).get("embedding", "sentence-transformers/all-MiniLM-L6-v2")
 
-    data_dir = Path(cfg["paths"]["data_dir"]) 
-    db_path = data_dir / "jobs.db"
-    init_sqlite(db_path)
-
     model = _load_model(model_name)
     log.info("Loaded model %s", model_name)
 
     updated = 0
-    with sqlite3.connect(db_path) as conn:
-        conn.execute("PRAGMA journal_mode=WAL;")
-        batch_ids: List[int] = []
-        batch_texts: List[str] = []
-        for job_id, desc in _iter_missing_jobs(conn, limit=limit):
-            batch_ids.append(job_id)
-            batch_texts.append(desc)
-            if len(batch_ids) >= batch_size:
-                embs = encode_texts(model, batch_texts, batch_size=batch_size)
-                for jid, vec in zip(batch_ids, embs):
-                    conn.execute("UPDATE jobs SET embedding = ? WHERE id = ?", (_serialize_vec(vec), jid))
-                conn.commit()
-                updated += len(batch_ids)
-                log.info("Embedded %d jobs (running total: %d)", len(batch_ids), updated)
-                batch_ids.clear(); batch_texts.clear()
-
-        if batch_ids:
+    batch_ids: List[int] = []
+    batch_texts: List[str] = []
+    for job_id, desc in _iter_missing_jobs(limit=limit):
+        batch_ids.append(job_id)
+        batch_texts.append(desc)
+        if len(batch_ids) >= batch_size:
             embs = encode_texts(model, batch_texts, batch_size=batch_size)
-            for jid, vec in zip(batch_ids, embs):
-                conn.execute("UPDATE jobs SET embedding = ? WHERE id = ?", (_serialize_vec(vec), jid))
-            conn.commit()
+            with get_session() as session:
+                for jid, vec in zip(batch_ids, embs):
+                    session.query(Job).filter(Job.id == jid).update({Job.embedding: _serialize_vec(vec)})
             updated += len(batch_ids)
-            log.info("Embedded final batch %d (total: %d)", len(batch_ids), updated)
+            log.info("Embedded %d jobs (running total: %d)", len(batch_ids), updated)
+            batch_ids.clear(); batch_texts.clear()
+
+    if batch_ids:
+        embs = encode_texts(model, batch_texts, batch_size=batch_size)
+        with get_session() as session:
+            for jid, vec in zip(batch_ids, embs):
+                session.query(Job).filter(Job.id == jid).update({Job.embedding: _serialize_vec(vec)})
+        updated += len(batch_ids)
+        log.info("Embedded final batch %d (total: %d)", len(batch_ids), updated)
 
     print(f"Embedded {updated} job descriptions")
     return updated
 
 
-def _load_all_embeddings(conn: sqlite3.Connection) -> Tuple[np.ndarray, np.ndarray]:
-    cur = conn.execute("SELECT id, embedding FROM jobs WHERE embedding IS NOT NULL")
+def _load_all_embeddings() -> Tuple[np.ndarray, np.ndarray]:
     ids: List[int] = []
     vecs: List[np.ndarray] = []
-    for jid, blob in cur:
-        try:
-            vec = _deserialize_vec(blob)
-        except Exception:
-            continue
-        if vec.ndim != 1:
-            vec = vec.ravel()
-        ids.append(int(jid))
-        vecs.append(vec.astype(np.float32, copy=False))
-
+    with get_session() as session:
+        for jid, blob in session.query(Job.id, Job.embedding).filter(Job.embedding.isnot(None)).all():
+            try:
+                vec = _deserialize_vec(blob)
+            except Exception:
+                continue
+            if vec.ndim != 1:
+                vec = vec.ravel()
+            ids.append(int(jid))
+            vecs.append(vec.astype(np.float32, copy=False))
     if not vecs:
         return np.empty((0, 0), dtype=np.float32), np.empty((0,), dtype=np.int64)
-
     X = np.vstack(vecs).astype(np.float32, copy=False)
     I = np.asarray(ids, dtype=np.int64)
     return X, I
@@ -132,15 +122,10 @@ def _load_all_embeddings(conn: sqlite3.Connection) -> Tuple[np.ndarray, np.ndarr
 def build_faiss_index(index_path: Path | None = None) -> Tuple[Path, int, int]:
     log = logging.getLogger("aura.embeddings.index")
     cfg = load_config()
-    data_dir = Path(cfg["paths"]["data_dir"]) 
-    db_path = data_dir / "jobs.db"
-    init_sqlite(db_path)
-
     if index_path is None:
-        index_path = data_dir / "faiss.index"
+        index_path = Path(cfg["paths"]["data_dir"]) / "faiss.index"
 
-    with sqlite3.connect(db_path) as conn:
-        X, ids = _load_all_embeddings(conn)
+    X, ids = _load_all_embeddings()
 
     if X.size == 0:
         log.warning("No embeddings found; nothing to index.")
@@ -190,4 +175,3 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

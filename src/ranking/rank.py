@@ -9,7 +9,6 @@ from __future__ import annotations
 import argparse
 import json
 import datetime as dt
-import sqlite3
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
@@ -18,6 +17,8 @@ import numpy as np
 
 from ..config import load_config
 from ..logging_config import setup_logging
+from ..db.session import get_session
+from ..db.models import Job
 
 
 @dataclass
@@ -52,16 +53,17 @@ def _faiss_search(text: str, k: int) -> Tuple[np.ndarray, np.ndarray]:
     return D.ravel(), I.ravel().astype(int)
 
 
-def _fetch_jobs(conn: sqlite3.Connection, ids: Iterable[int]) -> Dict[int, sqlite3.Row]:
+def _fetch_jobs(ids: Iterable[int]) -> Dict[int, dict]:
     ids = list(ids)
     if not ids:
         return {}
-    placeholders = ",".join(["?"] * len(ids))
-    cur = conn.execute(
-        f"SELECT id, title, company, location, date_posted, url FROM jobs WHERE id IN ({placeholders})",
-        ids,
-    )
-    return {int(r["id"]): r for r in cur.fetchall()}
+    with get_session() as session:
+        rows = (
+            session.query(Job.id, Job.title, Job.company, Job.location, Job.date_posted, Job.url)
+            .filter(Job.id.in_(ids))
+            .all()
+        )
+    return {int(r[0]): {"id": int(r[0]), "title": r[1], "company": r[2], "location": r[3], "date_posted": r[4], "url": r[5]} for r in rows}
 
 
 def _score_recency(date_posted: Optional[str], decay_days: int) -> float:
@@ -95,10 +97,7 @@ def rank(query: str, k: int = 50, top: int = 10) -> List[RankedItem]:
     # FAISS IP on unit vectors is cosine in [-1, 1]; map to [0,1]
     sem01 = (scores + 1.0) / 2.0
 
-    db_path = Path(cfg["paths"]["data_dir"]) / "jobs.db"
-    with sqlite3.connect(db_path) as conn:
-        conn.row_factory = sqlite3.Row
-        rows = _fetch_jobs(conn, ids.tolist())
+    rows = _fetch_jobs(ids.tolist())
 
     items: List[RankedItem] = []
     for i, jid in enumerate(ids.tolist()):

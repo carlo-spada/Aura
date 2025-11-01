@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import json
-import sqlite3
 from pathlib import Path
 from typing import List, Tuple
 import datetime as dt
 
 import numpy as np
 import streamlit as st
+from src.db.session import get_session
+from src.db.models import Job, Rating
 
 
 st.set_page_config(page_title="AURA Dashboard", layout="wide")
@@ -20,13 +21,6 @@ def load_config():
     from src.config import load_config as _load
 
     return _load()
-
-
-@st.cache_resource
-def get_db_conn(db_path: Path) -> sqlite3.Connection:
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    return conn
 
 
 @st.cache_resource
@@ -60,17 +54,20 @@ def query_top_k(index, model, text: str, k: int = 10) -> Tuple[np.ndarray, np.nd
     return D.ravel(), I.ravel().astype(int)
 
 
-def fetch_jobs_by_ids(conn: sqlite3.Connection, ids: List[int]) -> List[sqlite3.Row]:
+def fetch_jobs_by_ids(ids: List[int]):
     if not ids:
         return []
-    placeholders = ",".join(["?"] * len(ids))
-    cur = conn.execute(
-        f"SELECT id, title, company, location, date_posted, url FROM jobs WHERE id IN ({placeholders})",
-        ids,
-    )
-    rows = cur.fetchall()
-    # Preserve order as returned by FAISS ids
+    with get_session() as session:
+        rows = (
+            session.query(Job.id, Job.title, Job.company, Job.location, Job.date_posted, Job.url)
+            .filter(Job.id.in_(ids))
+            .all()
+        )
     order = {jid: i for i, jid in enumerate(ids)}
+    rows = [
+        {"id": int(r[0]), "title": r[1], "company": r[2], "location": r[3], "date_posted": r[4], "url": r[5]}
+        for r in rows
+    ]
     return sorted(rows, key=lambda r: order.get(r["id"], 1_000_000))
 
 
@@ -103,22 +100,22 @@ with tab_overview:
     st.markdown("- Index: `python -m src.embeddings.encoder index`")
 
 with tab_jobs:
-    if not db_path.exists():
-        st.warning("Database not found. Run the ingestion and DB init steps first.")
-    else:
-        conn = get_db_conn(db_path)
-        # SQLite doesn't support "NULLS LAST"; simulate with boolean expression
-        cur = conn.execute(
-            "SELECT id, title, company, location, date_posted, url FROM jobs "
-            "ORDER BY (date_posted IS NULL), date_posted DESC, id DESC LIMIT 250"
+    with get_session() as session:
+        rows = (
+            session.query(Job.id, Job.title, Job.company, Job.location, Job.date_posted, Job.url)
+            .order_by(Job.date_posted.desc().nullslast(), Job.id.desc())
+            .limit(250)
+            .all()
         )
-        rows = cur.fetchall()
-        st.subheader(f"Jobs (showing {len(rows)} most recent)")
-        if rows:
-            data = [dict(r) for r in rows]
-            st.dataframe(data, use_container_width=True)
-        else:
-            st.info("No jobs found. Try running the ingestion pipeline.")
+    st.subheader(f"Jobs (showing {len(rows)} most recent)")
+    if rows:
+        data = [
+            {"id": int(r[0]), "title": r[1], "company": r[2], "location": r[3], "date_posted": r[4], "url": r[5]}
+            for r in rows
+        ]
+        st.dataframe(data, use_container_width=True)
+    else:
+        st.info("No jobs found. Try running the ingestion pipeline.")
 
 with tab_search:
     if not db_path.exists():
@@ -136,8 +133,7 @@ with tab_search:
             k = st.slider("Top K", min_value=5, max_value=50, value=10, step=5)
             if q:
                 scores, ids = query_top_k(index, model, q, k=k)
-                conn = get_db_conn(db_path)
-                rows = fetch_jobs_by_ids(conn, ids.tolist())
+                rows = fetch_jobs_by_ids(ids.tolist())
                 st.subheader(f"Top {len(rows)} results")
                 for row, score in zip(rows, scores):
                     st.markdown(
@@ -168,17 +164,17 @@ with tab_rank:
                 st.markdown("---")
 
 with tab_rate:
-    if not db_path.exists():
-        st.warning("Database not found. Run the ingestion and DB init steps first.")
-    else:
-        conn = get_db_conn(db_path)
-        jobs = conn.execute(
-            "SELECT id, title, company FROM jobs ORDER BY date_posted DESC NULLS LAST, id DESC LIMIT 200"
-        ).fetchall()
+    with get_session() as session:
+        jobs = (
+            session.query(Job.id, Job.title, Job.company)
+            .order_by(Job.date_posted.desc().nullslast(), Job.id.desc())
+            .limit(200)
+            .all()
+        )
         if not jobs:
             st.info("No jobs available to rate.")
         else:
-            job_options = {f"{j['title']} — {j['company']} (#{j['id']})": j["id"] for j in jobs}
+            job_options = {f"{j[1]} — {j[2]} (#{j[0]})": int(j[0]) for j in jobs}
             sel = st.selectbox("Select job to rate", list(job_options.keys()))
             job_id = job_options[sel]
 
@@ -192,37 +188,53 @@ with tab_rate:
             comment = st.text_area("Comment (optional)", "")
             if st.button("Submit rating"):
                 try:
-                    conn.execute(
-                        """
-                        INSERT INTO ratings (job_id, fit_score, interest_score, prestige_score, location_score, comment, timestamp)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
-                        """,
-                        (
-                            int(job_id),
-                            int(fit),
-                            int(interest),
-                            int(prestige),
-                            int(location),
-                            (comment or "").strip() or None,
-                            dt.datetime.utcnow().isoformat(timespec="seconds"),
-                        ),
-                    )
-                    conn.commit()
+                    with get_session() as session:
+                        session.add(
+                            Rating(
+                                job_id=int(job_id),
+                                fit_score=int(fit),
+                                interest_score=int(interest),
+                                prestige_score=int(prestige),
+                                location_score=int(location),
+                                comment=(comment or "").strip() or None,
+                                timestamp=dt.datetime.utcnow(),
+                            )
+                        )
                     st.success("Rating saved.")
                 except Exception as e:
                     st.error(f"Failed to save rating: {e}")
 
         st.subheader("Recent ratings")
-        rows = conn.execute(
-            """
-            SELECT r.id as rating_id, r.timestamp, r.fit_score, r.interest_score, r.prestige_score, r.location_score,
-                   j.title, j.company
-            FROM ratings r JOIN jobs j ON r.job_id = j.id
-            ORDER BY r.timestamp DESC, r.id DESC
-            LIMIT 50
-            """
-        ).fetchall()
+        with get_session() as session:
+            rows = (
+                session.query(
+                    Rating.id.label("rating_id"),
+                    Rating.timestamp,
+                    Rating.fit_score,
+                    Rating.interest_score,
+                    Rating.prestige_score,
+                    Rating.location_score,
+                    Job.title,
+                    Job.company,
+                )
+                .join(Job, Rating.job_id == Job.id)
+                .order_by(Rating.timestamp.desc(), Rating.id.desc())
+                .limit(50)
+                .all()
+            )
         if rows:
-            st.dataframe([dict(r) for r in rows], use_container_width=True)
+            st.dataframe([
+                {
+                    "rating_id": int(r[0]),
+                    "timestamp": r[1],
+                    "fit_score": r[2],
+                    "interest_score": r[3],
+                    "prestige_score": r[4],
+                    "location_score": r[5],
+                    "title": r[6],
+                    "company": r[7],
+                }
+                for r in rows
+            ], use_container_width=True)
         else:
             st.info("No ratings yet.")
