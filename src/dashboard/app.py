@@ -93,7 +93,7 @@ if metrics_path.exists():
     except Exception:
         pass
 
-tab_overview, tab_jobs, tab_search, tab_rate = st.tabs(["Overview", "Jobs", "Search", "Rate"]) 
+tab_overview, tab_jobs, tab_search, tab_rank, tab_rate = st.tabs(["Overview", "Jobs", "Search", "Rank", "Rate"]) 
 
 with tab_overview:
     st.write("Use the tabs to browse ingested jobs or search semantically using the FAISS index.")
@@ -144,6 +144,28 @@ with tab_search:
                         f"**{row['title']}** — {row['company']} | {row['location'] or 'N/A'}  ")
                     st.markdown(f"Score: `{score:.3f}` | [Job Link]({row['url']}) | Posted: {row['date_posted'] or 'N/A'}")
                     st.markdown("---")
+
+with tab_rank:
+    cfg_local = load_config()
+    if not (data_dir / "faiss.index").exists():
+        st.warning("FAISS index not found. Run the embeddings and index steps first.")
+    else:
+        rq = st.text_input("Ranking query", placeholder="e.g., data scientist remote NLP")
+        k = st.slider("Candidate pool (k)", min_value=20, max_value=200, value=50, step=10)
+        topn = st.slider("Top N", min_value=5, max_value=50, value=10, step=5)
+        if rq:
+            # Lazy import to avoid circulars on streamlit reload
+            from src.ranking.rank import rank as rank_fn
+
+            items = rank_fn(rq, k=k, top=topn)
+            st.subheader(f"Top {len(items)} ranked results")
+            for it in items:
+                st.markdown(
+                    f"**{it.title}** — {it.company} | {it.location_str or 'N/A'}  ")
+                st.markdown(
+                    f"Score: `{it.score:.3f}` (sem={it.semantic:.3f}, rec={it.recency:.3f}, loc={it.location:.3f}) | [Job Link]({it.url}) | Posted: {it.date_posted or 'N/A'}"
+                )
+                st.markdown("---")
 
 with tab_rate:
     if not db_path.exists():

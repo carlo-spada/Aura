@@ -7,9 +7,10 @@ CLI usage:
 from __future__ import annotations
 
 import argparse
+import json
 import datetime as dt
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
@@ -131,15 +132,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--q", required=True, help="Query text")
     parser.add_argument("--k", type=int, default=50, help="Candidate pool from FAISS")
     parser.add_argument("--top", type=int, default=10, help="Top-N to return")
+    parser.add_argument("--json", action="store_true", help="Output results as JSON array")
     args = parser.parse_args(argv)
     setup_logging()
     results = rank(args.q, k=args.k, top=args.top)
-    for r in results:
-        print(f"{r.score:.3f} | {r.title} — {r.company} | {r.location_str or 'N/A'} | {r.date_posted or 'N/A'}")
-        print(f"  sem={r.semantic:.3f} rec={r.recency:.3f} loc={r.location:.3f}  {r.url}")
+    if args.json:
+        out = [asdict(r) for r in results]
+        print(json.dumps(out, indent=2))
+    else:
+        for r in results:
+            print(f"{r.score:.3f} | {r.title} — {r.company} | {r.location_str or 'N/A'} | {r.date_posted or 'N/A'}")
+            print(f"  sem={r.semantic:.3f} rec={r.recency:.3f} loc={r.location:.3f}  {r.url}")
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

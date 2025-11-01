@@ -20,6 +20,7 @@ AURA is an autonomous system that discovers jobs, ranks them using semantic sear
    - `python -m src.embeddings.encoder index`
 5. Rank jobs by combined score:
    - `python -m src.ranking.rank --q "data scientist remote nlp" --k 50 --top 10`
+   - JSON output: add `--json`
 6. Run the bootstrap:
    - `python -m src.main`
 
