@@ -34,6 +34,9 @@ logs: compose-cmd
 bash: compose-cmd
 	$(DC) run --rm aura bash
 
+weekly: compose-cmd
+	$(DC) run --rm aura python -m src.pipelines.weekly
+
 clean: compose-cmd
 	$(DC) down -v --remove-orphans
 	-docker rmi aura:latest
