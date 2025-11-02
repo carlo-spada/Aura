@@ -10,10 +10,9 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    api
-      .jobs()
+    api.jobs()
       .then((data) => setJobs(data))
-      .catch((e) => setError(String(e)))
+      .catch((e) => setError(e?.message || String(e)))
       .finally(() => setLoading(false))
   }, [])
 
@@ -30,4 +29,3 @@ export default function HomePage() {
     </div>
   )
 }
-

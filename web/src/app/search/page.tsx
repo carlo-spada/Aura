@@ -17,7 +17,7 @@ export default function SearchPage() {
       const data = await api.rank(q, 50, 10)
       setResults(data)
     } catch (e: any) {
-      setError(String(e))
+      setError(e?.message || String(e))
     } finally {
       setLoading(false)
     }
@@ -55,4 +55,3 @@ export default function SearchPage() {
     </div>
   )
 }
-
