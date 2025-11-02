@@ -1,40 +1,46 @@
-'use client'
+import Link from 'next/link'
 
-import { useEffect, useState } from 'react'
-import { api, type Job } from '../lib/api'
-import { Skeleton } from '../components/Skeleton'
-import { JobCard } from '../components/JobCard'
-
-export default function HomePage() {
-  const [jobs, setJobs] = useState<Job[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    api.jobs()
-      .then((data) => setJobs(data))
-      .catch((e) => setError(e?.message || String(e)))
-      .finally(() => setLoading(false))
-  }, [])
-
+export default function LandingPage() {
   return (
-    <div className="container">
-      <h2 className="mb-3 text-lg font-semibold">Recent Jobs</h2>
-      {loading && (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-28" />
-          ))}
+    <div className="min-h-screen bg-neutral-50 text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
+      {/* Hero */}
+      <section className="mx-auto flex max-w-6xl flex-col items-center gap-6 px-4 py-16 sm:py-20 md:flex-row md:items-start">
+        <div className="flex-1">
+          <h1 className="text-3xl font-semibold sm:text-4xl md:text-5xl">AURA — Your personal job search agent</h1>
+          <p className="mt-4 max-w-xl text-neutral-400">Discover roles, rate batches, and generate tailored applications with one click. AURA learns your preferences over time.</p>
+          <div className="mt-6 flex gap-3">
+            <Link href="/auth/login" className="rounded bg-neutral-100 px-4 py-2 text-neutral-900 hover:bg-white dark:bg-neutral-200">Log in</Link>
+            <Link href="/auth/signup" className="rounded border border-neutral-700 px-4 py-2 hover:bg-neutral-800">Sign up</Link>
+          </div>
         </div>
-      )}
-      {error && <p className="text-red-400">{error}</p>}
-      {!loading && (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {jobs.map((j) => (
-            <JobCard key={j.id} job={j} />
-          ))}
+        <div className="flex-1 rounded-xl border border-neutral-800 bg-neutral-900/40 p-6">
+          <p className="text-sm text-neutral-300">Demo preview</p>
+          <ul className="mt-3 space-y-2 text-sm text-neutral-400">
+            <li>• Batch rating up to 5 jobs</li>
+            <li>• Tailored CV & Cover Letter generation</li>
+            <li>• Application tracker & history</li>
+            <li>• Preferences & theme settings</li>
+          </ul>
         </div>
-      )}
+      </section>
+
+      {/* Marketing */}
+      <section className="mx-auto max-w-6xl px-4 pb-20">
+        <div className="grid gap-6 md:grid-cols-3">
+          <FeatureCard title="Rate in Batches" desc="Distilled job cards, 1–5 stars, fast feedback." />
+          <FeatureCard title="Tailored Applications" desc="One click CV/CL generation from your source CV." />
+          <FeatureCard title="Learned Preferences" desc="Improves weekly as you interact and apply." />
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function FeatureCard({ title, desc }: { title: string; desc: string }) {
+  return (
+    <div className="rounded-xl border border-neutral-800 bg-neutral-900/40 p-5">
+      <h3 className="text-base font-medium">{title}</h3>
+      <p className="mt-2 text-sm text-neutral-400">{desc}</p>
     </div>
   )
 }
