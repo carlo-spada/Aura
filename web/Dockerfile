@@ -10,7 +10,8 @@ ARG GOOGLE_CLIENT_SECRET
 ARG EMAIL_SERVER
 ARG EMAIL_FROM
 
-ENV NODE_ENV=production \
+# Install/build need devDependencies (tailwind, postcss). Use development during build.
+ENV NODE_ENV=development \
     PORT=3000 \
     NEXT_TELEMETRY_DISABLED=1 \
     NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL} \
@@ -30,8 +31,11 @@ RUN if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; \
 
 # Copy sources and build
 COPY . .
+# Build Next.js
 RUN npm run build
+
+# Switch to production for runtime
+ENV NODE_ENV=production
 
 EXPOSE 3000
 CMD ["npm","start"]
-
