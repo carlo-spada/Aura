@@ -14,7 +14,7 @@ COPY src/ ./src/
 COPY config.yaml ./config.yaml
 RUN mkdir -p /app/data /app/logs /app/outputs /app/models
 
-ENV PYTHONPATH=/app/src \
+ENV PYTHONPATH=/app \
     PYTHONUNBUFFERED=1 \
     HF_HOME=/app/models \
     TRANSFORMERS_CACHE=/app/models \

@@ -12,7 +12,7 @@
   "forwardPorts": [8501],
   "postCreateCommand": "python -m pip install --upgrade pip",
   "remoteEnv": {
-    "PYTHONPATH": "/app/src",
+    "PYTHONPATH": "/app",
     "PYTHONUNBUFFERED": "1"
   },
   "customizations": {
