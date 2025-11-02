@@ -1,12 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { api } from '../../lib/api'
+import { api, type ScoredJob } from '../../lib/api'
 import { JobCard } from '../../components/JobCard'
 
 export default function SearchPage() {
   const [q, setQ] = useState('data scientist remote')
-  const [results, setResults] = useState<any[]>([])
+  const [results, setResults] = useState<ScoredJob[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 

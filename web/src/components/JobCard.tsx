@@ -1,14 +1,6 @@
-type Props = {
-  job: {
-    id: number
-    title: string
-    company: string
-    location?: string | null
-    date_posted?: string | null
-    url: string
-  }
-  score?: number
-}
+import type { Job } from '../lib/api'
+
+type Props = { job: Job; score?: number }
 
 export function JobCard({ job, score }: Props) {
   return (
@@ -35,4 +27,3 @@ export function JobCard({ job, score }: Props) {
     </a>
   )
 }
-
