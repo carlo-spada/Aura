@@ -2,16 +2,14 @@
   email {$ACME_EMAIL}
 }
 
-{$AURA_DOMAIN} {
+# API subdomain (e.g., api.aura.carlospada.me)
+{$AURA_API_DOMAIN} {
   encode zstd gzip
-
-  @api path /api* /healthz /docs /openapi.json
-  handle @api {
-    reverse_proxy api:8000
-  }
-
-  handle {
-    reverse_proxy dashboard:8501
-  }
+  reverse_proxy api:8000
 }
 
+# Dashboard subdomain (e.g., dashboard.aura.carlospada.me)
+{$AURA_DASHBOARD_DOMAIN} {
+  encode zstd gzip
+  reverse_proxy dashboard:8501
+}

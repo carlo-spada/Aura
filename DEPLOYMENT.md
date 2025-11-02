@@ -20,7 +20,8 @@ git clone https://github.com/<you>/Aura.git
 cd Aura
 cp .env.sample .env
 # Edit .env and set:
-#   AURA_DOMAIN=aura.yourdomain.com
+#   AURA_API_DOMAIN=api.aura.yourdomain.com
+#   AURA_DASHBOARD_DOMAIN=dashboard.aura.yourdomain.com
 #   ACME_EMAIL=you@example.com
 ```
 
@@ -55,8 +56,8 @@ docker compose -f docker-compose.prod.yml up -d db api dashboard caddy
 ```
 
 Verify:
-- API health: https://aura.yourdomain.com/healthz
-- Dashboard: https://aura.yourdomain.com/
+- API health: https://api.aura.yourdomain.com/healthz
+- Dashboard: https://dashboard.aura.yourdomain.com/
 
 ### Kubernetes (optional)
 Prefer managed Postgres and an image in a registry. Two options are included:

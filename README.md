@@ -64,6 +64,9 @@ Note: In Docker, Postgres is used by default. For local dev without Docker you c
 
 ## Production Deployment
 - See `DEPLOYMENT.md` for a step-by-step guide using Docker Compose and Caddy (HTTPS) on a small VPS.
+  - Use subdomains:
+    - API: `api.aura.yourdomain.com`
+    - Dashboard: `dashboard.aura.yourdomain.com`
   - To migrate existing local SQLite data into Postgres: `docker compose -f docker-compose.prod.yml run --rm aura python -m src.db.migrate_sqlite_to_postgres --sqlite ./data/jobs.db`
 
 ### Project Layout
