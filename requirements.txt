@@ -21,3 +21,4 @@ click
 python-dotenv
 fastapi
 uvicorn
+python-jose[cryptography]

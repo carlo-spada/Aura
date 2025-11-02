@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import List, Optional
 
 import numpy as np
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Depends
 import os
 from sqlalchemy import text
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,6 +23,7 @@ from ..logging_config import setup_logging
 from ..ranking.rank import rank as rank_fn, RankedItem
 from ..db.session import get_session, get_database_url
 from ..db.models import Job, Rating
+from .auth import get_current_user
 
 
 class JobOut(BaseModel):
@@ -166,6 +167,13 @@ def get_job(job_id: int) -> JobOut:
             date_posted=r[4],
             url=r[5],
         )
+
+
+@app.get("/me")
+def me(claims: dict = Depends(get_current_user)) -> dict:
+    if not claims:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    return {"sub": claims.get("sub"), "email": claims.get("email"), "name": claims.get("name")}
 
 
 @app.get("/search", response_model=List[ScoredJob])
