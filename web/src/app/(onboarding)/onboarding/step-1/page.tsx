@@ -1,11 +1,12 @@
 "use client"
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Stepper } from '../Stepper'
+import { usePreferences } from '../../../../components/PreferencesContext'
 
 export default function Step1() {
   const [roles, setRoles] = useState('')
-  const { prefs, setPrefs, save } = require('../../../../components/PreferencesContext') as any
+  const { prefs, setPrefs, save } = usePreferences()
   // preload from prefs
   useEffect(() => {
     if (prefs?.roles?.length) setRoles(prefs.roles.join(', '))
