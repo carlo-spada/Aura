@@ -10,7 +10,7 @@ import { useDebounce } from '../../lib/useDebounce'
 export default function SearchPage() {
   const params = useSearchParams()
   const router = useRouter()
-  const initialQ = params.get('q') || 'data scientist remote'
+  const initialQ = params?.get('q') || 'data scientist remote'
   const [q, setQ] = useState(initialQ)
   const qDebounced = useDebounce(q, 500)
   const [results, setResults] = useState<ScoredJob[]>([])
