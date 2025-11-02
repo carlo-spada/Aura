@@ -82,3 +82,20 @@ class Preferences(Base):
     batch_size = Column(Integer, nullable=True)
     frequency_days = Column(Integer, nullable=True)
     cv_url = Column(String, nullable=True)
+
+
+class Batch(Base):
+    __tablename__ = "batches"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime)
+    locked_at = Column(DateTime, nullable=True)
+
+
+class BatchJob(Base):
+    __tablename__ = "batch_jobs"
+
+    id = Column(Integer, primary_key=True)
+    batch_id = Column(Integer, ForeignKey("batches.id"), nullable=False)
+    job_id = Column(Integer, ForeignKey("jobs.id"), nullable=False)

@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { api, type Job } from '../../../lib/api'
+import { api, apiAuth, type Job } from '../../../lib/api'
 import { Skeleton } from '../../../components/Skeleton'
 import { JobCard } from '../../../components/JobCard'
 import { StarRating } from '../../../components/StarRating'
@@ -17,11 +17,30 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (jobs.length > 0) return setLoading(false)
-    api.jobs()
-      .then((data) => setJobs(data))
-      .catch((e) => setError(e?.message || String(e)))
-      .finally(() => setLoading(false))
-  }, [jobs.length, setJobs])
+    const token = (data as any)?.token as string | undefined
+    const load = async () => {
+      try {
+        if (token) {
+          const b = await apiAuth.getCurrentBatch(token)
+          setJobs(b.jobs)
+        } else {
+          const d = await api.jobs()
+          setJobs(d)
+        }
+      } catch (e: any) {
+        // fallback to recent jobs if no batch
+        try {
+          const d = await api.jobs()
+          setJobs(d)
+        } catch (err) {
+          setError(e?.message || String(e))
+        }
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [jobs.length, setJobs, data])
 
   return (
     <div>

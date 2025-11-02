@@ -74,4 +74,19 @@ export const apiAuth = {
     if (!res.ok) throw new Error(`API error ${res.status}`)
     return res.json()
   },
+  createBatch: async (token: string): Promise<{ id: number; jobs: Job[] }> => {
+    const res = await fetch(`${API_URL}/batches`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) throw new Error(`API error ${res.status}`)
+    return res.json()
+  },
+  getCurrentBatch: async (token: string): Promise<{ id: number; jobs: Job[] }> => {
+    const res = await fetch(`${API_URL}/batches/current`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) throw new Error(`API error ${res.status}`)
+    return res.json()
+  },
 }

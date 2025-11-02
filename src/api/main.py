@@ -23,7 +23,7 @@ from ..config import load_config
 from ..logging_config import setup_logging
 from ..ranking.rank import rank as rank_fn, RankedItem
 from ..db.session import get_session, get_database_url
-from ..db.models import Job, Rating, User, Preferences
+from ..db.models import Job, Rating, User, Preferences, Batch, BatchJob
 from .auth import get_current_user
 
 
@@ -371,3 +371,97 @@ def put_preferences(payload: PreferencesIn, claims: dict = Depends(get_current_u
             setattr(prefs, field, value)
         session.flush()
         return PreferencesOut(user_id=user.id, **payload.dict(exclude_unset=True))
+
+
+class BatchOut(BaseModel):
+    id: int
+    jobs: List[JobOut]
+
+
+@app.post("/batches", response_model=BatchOut)
+def create_batch(limit: int = Query(None, ge=1, le=50), claims: dict = Depends(get_current_user)):
+    if not claims:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_session() as session:
+        user = _get_or_create_user(session, claims)
+        # Do not create a new batch if there is an unlocked one
+        existing = (
+            session.query(Batch.id)
+            .filter(Batch.user_id == user.id, Batch.locked_at.is_(None))
+            .first()
+        )
+        if existing:
+            # Return current instead
+            return get_current_batch(claims)
+        # Determine batch size from preferences or query param
+        prefs = session.query(Preferences).filter(Preferences.user_id == user.id).first()
+        batch_size = limit or (prefs.batch_size if prefs and prefs.batch_size else 5)
+        # Create batch
+        b = Batch(user_id=user.id, created_at=dt.datetime.utcnow())
+        session.add(b)
+        session.flush()
+        # Select most recent jobs as a simple heuristic
+        q = (
+            session.query(Job.id, Job.title, Job.company, Job.location, Job.date_posted, Job.url)
+            .order_by(Job.date_posted.desc().nullslast(), Job.id.desc())
+            .limit(batch_size)
+        )
+        rows = q.all()
+        for r in rows:
+            session.add(BatchJob(batch_id=b.id, job_id=int(r[0])))
+        session.flush()
+        jobs = [
+            JobOut(id=int(r[0]), title=r[1], company=r[2], location=r[3], date_posted=r[4], url=r[5])
+            for r in rows
+        ]
+        return BatchOut(id=b.id, jobs=jobs)
+
+
+@app.get("/batches/current", response_model=BatchOut)
+def get_current_batch(claims: dict = Depends(get_current_user)):
+    if not claims:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_session() as session:
+        user = _get_or_create_user(session, claims)
+        b = (
+            session.query(Batch.id)
+            .filter(Batch.user_id == user.id, Batch.locked_at.is_(None))
+            .order_by(Batch.id.desc())
+            .first()
+        )
+        if not b:
+            raise HTTPException(status_code=404, detail="no current batch")
+        # Load jobs
+        job_ids = [
+            int(r[0])
+            for r in session.query(BatchJob.job_id).filter(BatchJob.batch_id == int(b[0])).all()
+        ]
+        if not job_ids:
+            return BatchOut(id=int(b[0]), jobs=[])
+        placeholders = job_ids
+        rows = (
+            session.query(Job.id, Job.title, Job.company, Job.location, Job.date_posted, Job.url)
+            .filter(Job.id.in_(placeholders))
+            .all()
+        )
+        jobs = [
+            JobOut(id=int(r[0]), title=r[1], company=r[2], location=r[3], date_posted=r[4], url=r[5])
+            for r in rows
+        ]
+        return BatchOut(id=int(b[0]), jobs=jobs)
+
+
+@app.post("/batches/{batch_id}/lock")
+def lock_batch(batch_id: int, claims: dict = Depends(get_current_user)) -> dict:
+    if not claims:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_session() as session:
+        user = _get_or_create_user(session, claims)
+        b = session.query(Batch).filter(Batch.id == batch_id, Batch.user_id == user.id).first()
+        if not b:
+            raise HTTPException(status_code=404, detail="batch not found")
+        if b.locked_at is not None:
+            return {"ok": True}
+        b.locked_at = dt.datetime.utcnow()
+        session.flush()
+        return {"ok": True}
