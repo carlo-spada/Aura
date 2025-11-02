@@ -3,22 +3,38 @@ import GithubProvider from 'next-auth/providers/github'
 import GoogleProvider from 'next-auth/providers/google'
 import EmailProvider from 'next-auth/providers/email'
 
+const hasGithub = !!(process.env.GITHUB_ID && process.env.GITHUB_SECRET)
+const hasGoogle = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)
+const hasEmail = !!(process.env.EMAIL_SERVER && process.env.EMAIL_FROM)
+
 const handler = NextAuth({
   providers: [
-    GithubProvider({
-      clientId: process.env.GITHUB_ID || '',
-      clientSecret: process.env.GITHUB_SECRET || '',
-      allowDangerousEmailAccountLinking: true,
-    }),
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || '',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-      allowDangerousEmailAccountLinking: true,
-    }),
-    EmailProvider({
-      server: process.env.EMAIL_SERVER || '',
-      from: process.env.EMAIL_FROM || 'no-reply@localhost',
-    }),
+    ...(hasGithub
+      ? [
+          GithubProvider({
+            clientId: process.env.GITHUB_ID!,
+            clientSecret: process.env.GITHUB_SECRET!,
+            allowDangerousEmailAccountLinking: true,
+          }),
+        ]
+      : []),
+    ...(hasGoogle
+      ? [
+          GoogleProvider({
+            clientId: process.env.GOOGLE_CLIENT_ID!,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+            allowDangerousEmailAccountLinking: true,
+          }),
+        ]
+      : []),
+    ...(hasEmail
+      ? [
+          EmailProvider({
+            server: process.env.EMAIL_SERVER!,
+            from: process.env.EMAIL_FROM!,
+          }),
+        ]
+      : []),
   ],
   session: {
     strategy: 'jwt',
