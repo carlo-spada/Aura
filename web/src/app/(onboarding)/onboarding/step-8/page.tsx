@@ -35,13 +35,14 @@ export default function Step8() {
       <div className="mt-6 flex justify-between">
         <Link href="/onboarding/step-7" className="rounded border border-neutral-800 px-4 py-2 hover:bg-neutral-900">Back</Link>
         <button
-          disabled={!data?.token || saving}
+          disabled={!((data as any)?.token) || saving}
           onClick={async () => {
-            if (!data?.token) return
+            const token = (data as any)?.token as string | undefined
+            if (!token) return
             setSaving(true)
             setError(null)
             try {
-              await apiAuth.putPreferences({ frequency_days: freq }, (data as any).token as string)
+              await apiAuth.putPreferences({ frequency_days: freq }, token)
               window.location.href = '/onboarding/processing'
             } catch (e: any) {
               setError(e?.message || String(e))
