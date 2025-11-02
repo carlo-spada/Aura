@@ -1,6 +1,53 @@
 # AURA — Autonomous Up-skilling & Role-Acquisition Agent
 ### Comprehensive Engineering Specification (for Codex and agent collaboration)
 
+Note on versions and structure (2025‑11)
+
+- This document contains both the original design (kept for traceability) and an updated, production‑ready plan reflecting what’s built. To navigate:
+  - Prefer “Updated Overview (2025‑11)” below, and sections 26–30 for the latest UI/UX, i18n, current implementation, deployment notes, and prioritized next steps.
+  - Treat earlier sections as “Legacy Ideas” unless explicitly referenced by the updated sections.
+
+---
+
+## Updated Overview (2025‑11)
+
+- Hosting & Domains
+  - Web (Next.js, App Router): Vercel at `aura.carlospada.me`
+  - API (FastAPI): VPS + Docker at `api.aura.carlospada.me`
+  - Admin Dashboard (Streamlit): `dashboard.aura.carlospada.me`
+  - Caddy reverse proxy with automatic TLS (Let’s Encrypt), split subdomains
+
+- Data & Pipelines
+  - Ingestion: RemoteOK → normalized jobs (de‑dupe by URL)
+  - Embeddings: sentence‑transformers MiniLM; FAISS (cosine) index
+  - Weekly pipeline (cron): ingest → embed → index
+
+- Database (Postgres, Alembic migrations)
+  - Core: `jobs`, `ratings(user_id, stars, …)`, `outcomes`
+  - Accounts/Prefs: `users`, `preferences`
+  - Batches: `batches`, `batch_jobs`
+  - Ratings unique on `(user_id, job_id)`; API upserts ratings
+
+- API (JWT via NextAuth secret)
+  - Health: `GET /healthz`; Jobs: `GET /jobs`, `GET /jobs/{id}`
+  - Search/Rank: `GET /search`, `GET /rank`
+  - Preferences (per user): `GET/PUT /preferences`
+  - Ratings (protected): `POST /ratings` (stars 1–5, upsert)
+  - Batches (protected): `POST /batches`, `GET /batches/current`, `POST /batches/{id}/lock`
+  - CORS allowlist via `ALLOWED_ORIGINS`
+
+- Web App (Next.js)
+  - Landing (hero + marketing), Onboarding (8 steps) bound to Preferences
+  - Processing creates a batch then redirects to Dashboard
+  - Dashboard loads current batch (signed‑in) or recent jobs; star ratings persist
+  - App shell with dark/light theme; JobCard shows quick tags (Remote + inferred skills)
+  - Auth via NextAuth (GitHub/Google)
+
+- Internationalization (planned)
+  - `next-intl`, locale‑prefixed routes, language switcher; optional job translation caching (section 27)
+
+---
+
 ---
 
 ## 1. Mission & Overview
@@ -510,3 +557,107 @@ web/src/app/(app)/settings/page.tsx          # Preferences, CV, theme, account
 8) Auth + preferences/batches/ratings endpoints; JWT verification.
 9) Generation integration (CV/CL), doc editing, PDF export.
 10) Polish: copy, skeletons, toasts, accessibility, SEO/manifest/icons.
+
+---
+
+## 27. Internationalization (i18n) & Localization
+
+### 27.1 Goals
+- Make the public web UI multilingual with an easy language switcher (top‑right), defaulting based on browser preferences.
+- Localize all static UI strings (landing, onboarding, app shell, dashboard chrome). Keep job postings in their original language initially; optionally provide on‑demand translation for job content with caching.
+
+### 27.2 Architecture (Next.js App Router)
+- Library: `next-intl` for App Router.
+- Routing: locale‑prefixed routes, e.g. `/[locale]/...` for public and app shells. Middleware detects best locale and redirects to `/{locale}`.
+- Message catalogs: `web/src/messages/{locale}.json` with namespaces (landing, onboarding, shell, dashboard).
+- Provider: wrap `[locale]/layout.tsx` with `NextIntlClientProvider`.
+- Language switcher: component in header showing current locale and offering available locales (use language names, not flags). Persist choice via cookie.
+
+### 27.3 Dynamic Content Translation (optional)
+- Add a translate toggle per job card or page section. Backend `POST /translate` accepts `{text, target_locale}`, integrates with DeepL/Google Translate, and caches by `(sha256(text), target_locale)` in Postgres to minimize cost.
+
+### 27.4 SEO
+- Generate `hreflang` alternates and locale sitemaps. Ensure page metadata (title/description) is localized.
+
+### 27.5 Rollout Plan
+1) Wire `next-intl`, add `en` baseline, add language switcher.
+2) Add `es`, `pt` catalogs (initial machine translation; refine copy later).
+3) Localize landing, onboarding, shell, and dashboard chrome.
+4) Add optional job description translation with caching if needed.
+
+---
+
+## 28. Current Implementation Snapshot (Production)
+
+Date: YYYY‑MM‑DD (update as needed)
+
+- Hosting & Domains
+  - Web (Next.js): Vercel at `aura.carlospada.me`
+  - API (FastAPI): VPS + Docker at `api.aura.carlospada.me`
+  - Admin Dashboard (Streamlit): VPS + Docker at `dashboard.aura.carlospada.me`
+  - Reverse proxy: Caddy with automatic TLS (Let’s Encrypt)
+
+- Database (Postgres)
+  - Tables: `jobs`, `ratings` (user_id, stars), `outcomes`, `users`, `preferences`, `batches`, `batch_jobs`, `alembic_version`
+  - Migrations: Alembic (`0001_initial` .. `0005_ratings_unique_user_job`)
+
+- Data & Pipelines
+  - Ingestion: RemoteOK client (normalize, de‑dupe by URL)
+  - Embeddings: sentence‑transformers MiniLM; vectors stored in DB; FAISS index (cosine) at `data/faiss.index`
+  - Weekly pipeline: ingest → embed → index (cron‑ready)
+
+- API (FastAPI)
+  - Health: `GET /healthz`
+  - Jobs: `GET /jobs`, `GET /jobs/{id}`
+  - Search/Rank: `GET /search`, `GET /rank`
+  - Ratings: `POST /ratings` (JWT required, upsert by `(user_id, job_id)`; supports `stars` 1‑5)
+  - Preferences: `GET/PUT /preferences` (JWT; one‑to‑one per user)
+  - Batches: `POST /batches` (create or return current), `GET /batches/current`, `POST /batches/{id}/lock`
+  - CORS: `ALLOWED_ORIGINS` configured; JWT: `NEXTAUTH_SECRET` (HS256)
+
+- Web (Next.js, App Router)
+  - Landing (hero + marketing)
+  - Onboarding wizard (8 steps) bound to Preferences; saves on Next; Step 8 sets search frequency and routes to Processing
+  - Processing triggers `POST /batches`, redirects to Dashboard
+  - Dashboard loads current batch (if logged in) or falls back to recent jobs; star ratings persist via API
+  - App shell with dark/light theme toggle; sidebar (desktop) and bottom nav (mobile)
+  - JobCard polished: quick tags (Remote + inferred skills), score chip
+  - Auth: NextAuth (Google/GitHub) with JWT sessions
+
+- Admin Dashboard (Streamlit)
+  - Jobs list, search, rating demo; to evolve into internal tooling
+
+- DevX/CI
+  - GitHub Actions for lint/format/mypy/tests/docker build
+  - Pre‑commit (ruff, black), logging to file with rotation
+
+---
+
+## 29. Deployment Notes (At‑a‑Glance)
+
+- Environment
+  - API: `DATABASE_URL`, `ALLOWED_ORIGINS`, `NEXTAUTH_SECRET`
+  - Caddy: `AURA_API_DOMAIN`, `AURA_DASHBOARD_DOMAIN`, `ACME_EMAIL`
+  - Web (Vercel): `NEXT_PUBLIC_API_URL`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `GITHUB_ID/SECRET` or `GOOGLE_CLIENT_ID/SECRET`
+
+- Commands (VPS)
+  - Migrate: `docker compose -f docker-compose.prod.yml run --rm aura alembic upgrade head`
+  - Weekly pipeline: cron runs `python -m src.pipelines.weekly`
+  - Recreate service: `docker compose -f docker-compose.prod.yml up -d --force-recreate <service>`
+
+See DEPLOYMENT.md for the full guide.
+
+---
+
+## 30. Next Steps (Prioritized)
+
+1) i18n base: wire `next-intl`, language switcher, `en` + `es/pt` catalogs
+2) Batch UX: show batch metadata; “Lock & new batch” button (locks current, creates next)
+3) Application generation: backend endpoints + UI previews/editing; PDF export
+4) Tracker: status board/table with updates and notes; wire outcomes
+5) Preferences: finish binding remaining onboarding fields; add server validation
+6) Rating UX: toasts, undo; display average/last rating on cards
+7) SEO: localized metadata, `hreflang`, sitemaps
+8) Billing: Stripe test mode (Checkout, webhooks), subscription gating
+9) Security: tighten CORS to prod domain(s) only; basic auth on admin dashboard (Caddy)
+10) Observability: structured logs, minimal metrics table (or extend metrics.json) for trends

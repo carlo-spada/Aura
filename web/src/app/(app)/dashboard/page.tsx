@@ -6,7 +6,6 @@ import { JobCard } from '../../../components/JobCard'
 import { StarRating } from '../../../components/StarRating'
 import { useBatch } from '../../../components/BatchContext'
 import { useSession } from 'next-auth/react'
-import { apiAuth } from '../../../lib/api'
 import Link from 'next/link'
 
 export default function DashboardPage() {
