@@ -79,12 +79,10 @@ helm upgrade --install aura charts/aura \
 2) Raw manifests (`k8s/`)
 - Create namespace and secret, edit image + host, and apply the files as shown in `k8s/README.md`.
 
-### Schedule weekly pipeline
-On the VPS:
+### Reset data (optional)
+To wipe all data and recreate an empty schema (use with care):
 ```
-crontab -e
-# Fridays at 09:00 local time
-0 9 * * 5 cd /path/to/Aura && /usr/bin/env bash -lc 'docker compose -f docker-compose.prod.yml run --rm aura python -m src.pipelines.weekly >> logs/weekly.log 2>&1'
+docker compose -f docker-compose.prod.yml run --rm aura python -m src.db.wipe_data --yes
 ```
 
 ### Logs & backups

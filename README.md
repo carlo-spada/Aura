@@ -57,7 +57,7 @@ AURA is an autonomous system that discovers jobs, ranks them using semantic sear
 - Stop all: `docker compose down`
 - Convenience targets also available via `Makefile`:
   - `make run` (CLI one-shot), `make up-dashboard`, `make down`, `make logs`, `make bash`
-  - Weekly pipeline one-shot: `make weekly` (ingest → embed → index)
+  - Reset helpers: `make reset-db` (remove local DB volumes) or `make wipe` (drop all tables and recreate schema)
 - Compose reads `.env` automatically for settings like `LOG_LEVEL`.
 
 Note: In Docker, Postgres is used by default. For local dev without Docker you can omit `DATABASE_URL` to use SQLite.
@@ -76,7 +76,7 @@ Note: In Docker, Postgres is used by default. For local dev without Docker you c
 - `logs/` runtime logs
 
 ### Configuration
-- Edit `config.yaml` to customize models, providers, and schedule.
+- Edit `config.yaml` to customize models and providers.
  - Copy `.env.sample` to `.env` and fill values (e.g., `LOG_LEVEL`, API keys).
  - Logging: set `LOG_LEVEL`, optional `LOG_FILE` for file output. Default human-friendly console logs.
 
@@ -85,11 +85,10 @@ Note: In Docker, Postgres is used by default. For local dev without Docker you c
 - Add embedding generation and ranking in `src/embeddings/` and `src/ranking/`
 - Flesh out the feedback loop, training, RL, and generation modules
 
-## Scheduling (Fridays at 09:00)
-- Simple cron (host): `crontab -e` and add a line like:
-  - `0 9 * * 5 cd /absolute/path/to/Aura && /usr/bin/env bash -lc 'docker compose run --rm aura python -m src.pipelines.weekly >> logs/weekly.log 2>&1'`
-  - If running locally (venv): `0 9 * * 5 cd /absolute/path/to/Aura && /usr/bin/env bash -lc 'source .venv/bin/activate && python -m src.pipelines.weekly >> logs/weekly.log 2>&1'`
-  - Note: ensure the path is absolute; cron doesn’t load your shell profile.
+## Resetting data (start fresh)
+- Drop all data and recreate an empty schema (Postgres or SQLite):
+  - `python -m src.db.wipe_data` (interactive) or `python -m src.db.wipe_data --yes` (no prompt)
+  - Docker Compose alternative: `make reset-db` to remove the DB volumes entirely
 
 ## License
 MIT — see `LICENSE` for details.

@@ -15,6 +15,3 @@ job_sources:
     url: "https://remoteok.io/api"
   - name: "Indeed"
     search_terms: ["data scientist", "strategy consultant"]
-schedule:
-  frequency: "weekly"
-  day: "Friday"

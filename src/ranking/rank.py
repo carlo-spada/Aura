@@ -12,6 +12,7 @@ import datetime as dt
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from functools import lru_cache
 
 import numpy as np
 
@@ -35,18 +36,36 @@ class RankedItem:
     url: str
 
 
-def _faiss_search(text: str, k: int) -> Tuple[np.ndarray, np.ndarray]:
-    import faiss  # type: ignore
+@lru_cache(maxsize=1)
+def _get_model():
+    """Load and cache the embedding model once per process."""
     from sentence_transformers import SentenceTransformer
 
     cfg = load_config()
     model_name = cfg.get("models", {}).get("embedding", "sentence-transformers/all-MiniLM-L6-v2")
-    model = SentenceTransformer(model_name)
+    return SentenceTransformer(model_name)
+
+
+@lru_cache(maxsize=1)
+def _get_faiss_index():
+    """Load and cache the FAISS index once per process."""
+    import faiss  # type: ignore
+
+    cfg = load_config()
     idx_path = Path(cfg["paths"]["data_dir"]) / "faiss.index"
     if not idx_path.exists():
-        raise RuntimeError("FAISS index not found. Build it first.")
-    index = faiss.read_index(str(idx_path))
+        return None
+    return faiss.read_index(str(idx_path))
 
+
+def _faiss_search(text: str, k: int) -> Tuple[np.ndarray, np.ndarray]:
+    import faiss  # type: ignore
+
+    index = _get_faiss_index()
+    if index is None:
+        raise RuntimeError("FAISS index not found. Build it first.")
+
+    model = _get_model()
     vec = model.encode([text], convert_to_numpy=True, normalize_embeddings=False).astype(np.float32)
     vec /= np.linalg.norm(vec, axis=1, keepdims=True) + 1e-12
     D, I = index.search(vec, k)

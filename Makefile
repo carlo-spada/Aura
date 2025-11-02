@@ -38,8 +38,6 @@ logs: compose-cmd
 bash: compose-cmd
 	$(DC) run --rm aura bash
 
-weekly: compose-cmd
-	$(DC) run --rm aura python -m src.pipelines.weekly
 
 clean: compose-cmd
 	$(DC) down -v --remove-orphans
@@ -59,3 +57,7 @@ reset-postgres: compose-cmd
 reset-db:
 	$(MAKE) -s reset-sqlite
 	-$(MAKE) -s reset-postgres
+
+.PHONY: wipe
+wipe:
+	python -m src.db.wipe_data --yes

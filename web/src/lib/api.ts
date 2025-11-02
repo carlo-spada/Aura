@@ -24,22 +24,23 @@ export type Preferences = {
   cv_url?: string
 }
 
-async function get<T>(path: string): Promise<T> {
+async function get<T>(path: string, init?: RequestInit): Promise<T> {
   // Client-side fetch; avoid Next.js server-only options
-  const res = await fetch(`${API_URL}${path}`)
+  const res = await fetch(`${API_URL}${path}` , init)
   if (!res.ok) throw new Error(`API error ${res.status}`)
   return res.json()
 }
 
 export const api = {
-  health: (): Promise<{ status: string; db: boolean; index: boolean }> => get(`/healthz`),
-  jobs: (q?: string): Promise<Job[]> =>
-    get(`/jobs${q ? `?q=${encodeURIComponent(q)}` : ''}`),
-  job: (id: number): Promise<Job> => get(`/jobs/${id}`),
-  search: (q: string, k = 10): Promise<ScoredJob[]> =>
-    get(`/search?q=${encodeURIComponent(q)}&k=${k}`),
-  rank: (q: string, k = 50, top = 10): Promise<ScoredJob[]> =>
-    get(`/rank?q=${encodeURIComponent(q)}&k=${k}&top=${top}`),
+  health: (opts?: { signal?: AbortSignal }): Promise<{ status: string; db: boolean; index: boolean }> =>
+    get(`/healthz`, { signal: opts?.signal }),
+  jobs: (q?: string, opts?: { signal?: AbortSignal }): Promise<Job[]> =>
+    get(`/jobs${q ? `?q=${encodeURIComponent(q)}` : ''}`, { signal: opts?.signal }),
+  job: (id: number, opts?: { signal?: AbortSignal }): Promise<Job> => get(`/jobs/${id}`, { signal: opts?.signal }),
+  search: (q: string, k = 10, opts?: { signal?: AbortSignal }): Promise<ScoredJob[]> =>
+    get(`/search?q=${encodeURIComponent(q)}&k=${k}`, { signal: opts?.signal }),
+  rank: (q: string, k = 50, top = 10, opts?: { signal?: AbortSignal }): Promise<ScoredJob[]> =>
+    get(`/rank?q=${encodeURIComponent(q)}&k=${k}&top=${top}`, { signal: opts?.signal }),
 }
 
 export const apiAuth = {
