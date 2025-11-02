@@ -1,3 +1,4 @@
+"use client"
 import { useBatch } from '../../../components/BatchContext'
 
 export default function ApplicationsPage() {
@@ -26,4 +27,3 @@ export default function ApplicationsPage() {
     </div>
   )
 }
-
