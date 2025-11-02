@@ -43,6 +43,18 @@ export const api = {
 }
 
 export const apiAuth = {
+  postRatingStars: async (job_id: number, stars: number, token: string): Promise<{ ok: boolean }> => {
+    const res = await fetch(`${API_URL}/ratings`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ job_id, stars }),
+    })
+    if (!res.ok) throw new Error(`API error ${res.status}`)
+    return res.json()
+  },
   putPreferences: async (prefs: Preferences, token: string): Promise<Preferences> => {
     const res = await fetch(`${API_URL}/preferences`, {
       method: 'PUT',

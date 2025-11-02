@@ -33,6 +33,8 @@ class Rating(Base):
 
     id = Column(Integer, primary_key=True)
     job_id = Column(Integer, ForeignKey("jobs.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    stars = Column(Integer, nullable=True)
     fit_score = Column(Integer)
     interest_score = Column(Integer)
     prestige_score = Column(Integer)

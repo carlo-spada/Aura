@@ -5,10 +5,13 @@ import { Skeleton } from '../../../components/Skeleton'
 import { JobCard } from '../../../components/JobCard'
 import { StarRating } from '../../../components/StarRating'
 import { useBatch } from '../../../components/BatchContext'
+import { useSession } from 'next-auth/react'
+import { apiAuth } from '../../../lib/api'
 import Link from 'next/link'
 
 export default function DashboardPage() {
   const { jobs, setJobs, ratings, rate } = useBatch()
+  const { data } = useSession()
   const [loading, setLoading] = useState(jobs.length === 0)
   const [error, setError] = useState<string | null>(null)
 
@@ -37,7 +40,18 @@ export default function DashboardPage() {
             <div key={j.id} className="space-y-3">
               <JobCard job={j} />
               <div className="flex items-center justify-between">
-                <StarRating value={ratings[j.id] || 0} onChange={(v) => rate(j.id, v)} />
+                <StarRating
+                  value={ratings[j.id] || 0}
+                  onChange={async (v) => {
+                    rate(j.id, v)
+                    try {
+                      const token = (data as any)?.token as string | undefined
+                      if (token) await apiAuth.postRatingStars(j.id, v, token)
+                    } catch (e) {
+                      // Ignore for now; UI remains optimistic
+                    }
+                  }}
+                />
                 <span className="text-xs text-neutral-500">{ratings[j.id] ? `${ratings[j.id]}★` : 'Not rated'}</span>
               </div>
             </div>

@@ -240,39 +240,49 @@ def rank_endpoint(
 
 class RatingIn(BaseModel):
     job_id: int
-    fit_score: int
-    interest_score: int
-    prestige_score: int
-    location_score: int
+    stars: Optional[int] = None
+    fit_score: Optional[int] = None
+    interest_score: Optional[int] = None
+    prestige_score: Optional[int] = None
+    location_score: Optional[int] = None
     comment: Optional[str] = None
 
 
 @app.post("/ratings")
-def create_rating(r: RatingIn) -> dict:
+def create_rating(r: RatingIn, claims: dict = Depends(get_current_user)) -> dict:
+    if not claims:
+        raise HTTPException(status_code=401, detail="Unauthorized")
     # validate DB reachable
     try:
         with get_session() as session:
             session.execute("SELECT 1")
     except Exception:
         raise HTTPException(status_code=503, detail="Database not initialized")
-    # validate scores 1..10
-    for k in ("fit_score", "interest_score", "prestige_score", "location_score"):
-        v = getattr(r, k)
-        if not (1 <= v <= 10):
-            raise HTTPException(status_code=422, detail=f"{k} must be between 1 and 10")
+    # Validate either stars (1..5) or component scores (1..10)
+    if r.stars is not None:
+        if not (1 <= int(r.stars) <= 5):
+            raise HTTPException(status_code=422, detail="stars must be between 1 and 5")
+    else:
+        for k in ("fit_score", "interest_score", "prestige_score", "location_score"):
+            v = getattr(r, k)
+            if v is None or not (1 <= int(v) <= 10):
+                raise HTTPException(status_code=422, detail=f"{k} must be between 1 and 10")
 
     import datetime as dt
 
     with get_session() as session:
+        user = _get_or_create_user(session, claims)
         exists = session.query(Job.id).filter(Job.id == r.job_id).first()
         if not exists:
             raise HTTPException(status_code=404, detail="job not found")
         rating = Rating(
             job_id=r.job_id,
-            fit_score=r.fit_score,
-            interest_score=r.interest_score,
-            prestige_score=r.prestige_score,
-            location_score=r.location_score,
+            user_id=user.id,
+            stars=r.stars,
+            fit_score=r.fit_score if r.fit_score is not None else None,
+            interest_score=r.interest_score if r.interest_score is not None else None,
+            prestige_score=r.prestige_score if r.prestige_score is not None else None,
+            location_score=r.location_score if r.location_score is not None else None,
             comment=(r.comment or "").strip() or None,
             timestamp=dt.datetime.utcnow(),
         )
