@@ -13,14 +13,15 @@ export default function JobDetailPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const id = Number(params.id)
-    if (!id) return
+    const idStr = (params as any)?.id as string | undefined
+    const id = Number(idStr)
+    if (!id || Number.isNaN(id)) return
     api
       .job(id)
       .then((j) => setJob(j))
       .catch((e) => setError(e?.message || String(e)))
       .finally(() => setLoading(false))
-  }, [params.id])
+  }, [params])
 
   return (
     <div className="container">
@@ -62,4 +63,3 @@ export default function JobDetailPage() {
     </div>
   )
 }
-
