@@ -19,6 +19,7 @@ from ..db.init_db import main as init_db
 from ..embeddings.encoder import build_faiss_index, embed_missing
 from ..ingestion.remoteok import run as ingest_remoteok
 from ..logging_config import setup_logging
+from ..db.session import get_database_url
 
 
 def main() -> int:
@@ -28,7 +29,8 @@ def main() -> int:
 
     # Ensure DB tables exist
     init_db()
-    log.info("Starting weekly pipeline. DB: %s", db_path)
+    db_url = get_database_url()
+    log.info("Starting weekly pipeline. DB URL: %s", db_url)
 
     # 1) Ingestion (last 7 days)
     try:

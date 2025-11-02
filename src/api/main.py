@@ -80,7 +80,9 @@ def _query_top_k(text: str, k: int = 10):
     vec = model.encode([text], convert_to_numpy=True, normalize_embeddings=False).astype(np.float32)
     vec /= np.linalg.norm(vec, axis=1, keepdims=True) + 1e-12
     D, I = index.search(vec, k)
-    return D.ravel(), I.ravel().astype(int)
+    # Align scores with /rank: map inner product in [-1, 1] -> [0, 1]
+    scores01 = ((D.ravel()).astype(np.float32) + 1.0) / 2.0
+    return scores01, I.ravel().astype(int)
 
 
 app = FastAPI(title="AURA API", version="0.1.0")
@@ -413,24 +415,55 @@ def create_batch(limit: int = Query(None, ge=1, le=50), claims: dict = Depends(g
             return get_current_batch(claims)
         # Determine batch size from preferences or query param
         prefs = session.query(Preferences).filter(Preferences.user_id == user.id).first()
-        batch_size = limit or (prefs.batch_size if prefs and prefs.batch_size else 5)
+        desired = limit or (prefs.batch_size if prefs and prefs.batch_size else 4)
+        batch_size = max(1, min(4, int(desired)))
         # Create batch
         b = Batch(user_id=user.id, created_at=dt.datetime.utcnow())
         session.add(b)
         session.flush()
-        # Select most recent jobs as a simple heuristic
-        q = (
-            session.query(Job.id, Job.title, Job.company, Job.location, Job.date_posted, Job.url)
-            .order_by(Job.date_posted.desc().nullslast(), Job.id.desc())
-            .limit(batch_size)
-        )
-        rows = q.all()
-        for r in rows:
+        # Select jobs per-user based on preferences via rank() if possible; fallback to recents
+        selected_rows: List[tuple] = []
+        job_ids: List[int] = []
+        try:
+            # Build a simple query string from preferences
+            tokens: List[str] = []
+            if prefs:
+                if prefs.roles:
+                    tokens.extend([t for t in prefs.roles if t])
+                if prefs.include_skills:
+                    tokens.extend([t for t in prefs.include_skills if t])
+                if prefs.location_mode and prefs.location_mode.lower() == "remote":
+                    tokens.append("remote")
+            qtext = " ".join(dict.fromkeys([t.strip() for t in tokens if t and t.strip()])) or "remote data scientist"
+            items: List[RankedItem] = rank_fn(qtext, k=50, top=batch_size)
+            job_ids = [int(it.id) for it in items]
+        except Exception:
+            job_ids = []
+
+        if job_ids:
+            rows = (
+                session.query(Job.id, Job.title, Job.company, Job.location, Job.date_posted, Job.url)
+                .filter(Job.id.in_(job_ids))
+                .all()
+            )
+            # Preserve rank order
+            order = {jid: i for i, jid in enumerate(job_ids)}
+            selected_rows = sorted(rows, key=lambda r: order.get(int(r[0]), 1_000_000))[:batch_size]
+        else:
+            # Fallback: most recent but still per-user capped
+            q = (
+                session.query(Job.id, Job.title, Job.company, Job.location, Job.date_posted, Job.url)
+                .order_by(Job.date_posted.desc().nullslast(), Job.id.desc())
+                .limit(batch_size)
+            )
+            selected_rows = q.all()
+
+        for r in selected_rows:
             session.add(BatchJob(batch_id=b.id, job_id=int(r[0])))
         session.flush()
         jobs = [
             JobOut(id=int(r[0]), title=r[1], company=r[2], location=r[3], date_posted=r[4], url=r[5])
-            for r in rows
+            for r in selected_rows
         ]
         return BatchOut(id=b.id, jobs=jobs)
 
@@ -480,6 +513,24 @@ def lock_batch(batch_id: int, claims: dict = Depends(get_current_user)) -> dict:
             raise HTTPException(status_code=404, detail="batch not found")
         if b.locked_at is not None:
             return {"ok": True}
+        # Enforce: at least one job in this batch rated >= 4 stars by this user
+        job_ids = [
+            int(r[0])
+            for r in session.query(BatchJob.job_id).filter(BatchJob.batch_id == int(b.id)).all()
+        ]
+        if job_ids:
+            cnt = (
+                session.query(Rating)
+                .filter(
+                    Rating.user_id == user.id,
+                    Rating.job_id.in_(job_ids),
+                    Rating.stars.isnot(None),
+                    Rating.stars >= 4,
+                )
+                .count()
+            )
+            if cnt == 0:
+                raise HTTPException(status_code=422, detail="Must rate at least one job ≥4★ before locking")
         b.locked_at = dt.datetime.utcnow()
         session.flush()
         return {"ok": True}

@@ -1,10 +1,14 @@
 import Link from 'next/link'
 import { useI18n } from '../components/I18nProvider'
+import { LanguageSwitcher } from '../components/LanguageSwitcher'
 
 export default function LandingPage() {
   const { t } = useI18n()
   return (
     <div className="min-h-screen bg-neutral-50 text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
+      <div className="flex items-center justify-end p-4">
+        <LanguageSwitcher />
+      </div>
       {/* Hero */}
       <section className="mx-auto flex max-w-6xl flex-col items-center gap-6 px-4 py-16 sm:py-20 md:flex-row md:items-start">
         <div className="flex-1">

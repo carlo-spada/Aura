@@ -1,45 +1,62 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { api, apiAuth, type Job } from '../../../lib/api'
+import { apiAuth, type Job } from '../../../lib/api'
 import { Skeleton } from '../../../components/Skeleton'
 import { JobCard } from '../../../components/JobCard'
 import { StarRating } from '../../../components/StarRating'
 import { useBatch } from '../../../components/BatchContext'
 import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 export default function DashboardPage() {
   const { jobs, setJobs, ratings, rate } = useBatch()
-  const { data } = useSession()
+  const { data, status } = useSession()
+  const router = useRouter()
   const [loading, setLoading] = useState(jobs.length === 0)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    // 1) Require authentication
+    if (status === 'unauthenticated') {
+      router.replace('/auth/login')
+      return
+    }
+    if (status !== 'authenticated') return
     if (jobs.length > 0) return setLoading(false)
+
     const token = (data as any)?.token as string | undefined
+    if (!token) {
+      router.replace('/auth/login')
+      return
+    }
+
     const load = async () => {
       try {
-        if (token) {
+        // 2) Require onboarding completion (basic check: roles + cv_url)
+        const prefs = await apiAuth.getPreferences(token)
+        const hasRoles = Array.isArray(prefs.roles) && prefs.roles.length > 0
+        const hasCV = typeof prefs.cv_url === 'string' && prefs.cv_url.trim().length > 0
+        if (!hasRoles || !hasCV) {
+          router.replace('/onboarding')
+          return
+        }
+        // 3) Load current batch or create one
+        try {
           const b = await apiAuth.getCurrentBatch(token)
           setJobs(b.jobs)
-        } else {
-          const d = await api.jobs()
-          setJobs(d)
+        } catch (e: any) {
+          const b = await apiAuth.createBatch(token)
+          setJobs(b.jobs)
         }
       } catch (e: any) {
-        // fallback to recent jobs if no batch
-        try {
-          const d = await api.jobs()
-          setJobs(d)
-        } catch (err) {
-          setError(e?.message || String(e))
-        }
+        setError(e?.message || String(e))
       } finally {
         setLoading(false)
       }
     }
     load()
-  }, [jobs.length, setJobs, data])
+  }, [status, data, jobs.length, setJobs, router])
 
   return (
     <div>

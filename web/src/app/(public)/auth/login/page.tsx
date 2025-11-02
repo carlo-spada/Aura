@@ -19,9 +19,9 @@ export default function LoginPage() {
         <div className="mt-6 space-y-3">
           <button onClick={() => signIn('github')} className="w-full rounded border border-neutral-700 px-4 py-2 hover:bg-neutral-900">Continue with GitHub</button>
           <button onClick={() => signIn('google')} className="w-full rounded border border-neutral-700 px-4 py-2 hover:bg-neutral-900">Continue with Google</button>
+          <button onClick={() => signIn('email')} className="w-full rounded border border-neutral-700 px-4 py-2 hover:bg-neutral-900">Continue with Email</button>
         </div>
       )}
     </div>
   )
 }
-
