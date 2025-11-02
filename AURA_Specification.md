@@ -415,3 +415,98 @@ schedule:
 ---
 
 **End of specification.**
+ 
+---
+
+## 26. Frontend UI/UX Redesign (Next.js Web)
+
+### 26.1 Core Vision & Aesthetic
+- Premium, minimalist, data‑oriented feel inspired by RP Strength (training.rpstrength.com).
+- Dark Mode default (charcoal/blue surfaces, light text, bright accents); accessible Light Mode toggle.
+- Tone: “personal AI agent” guiding the user with clear, sparse copy and helpful states.
+
+Design tokens (suggested):
+- Dark: bg `#0B0F19`, surface `#121826`/`#1A2235`; text primary `#E6E8EE`, secondary `#AAB1C5`; accents primary `#5B8CFF`, success `#3FD09E`, warn `#F5B84B`, danger `#FF6B6B`.
+- Light: bg `#F8FAFF`, surface `#FFFFFF`, text `#0C1222`; mirror accents; maintain ≥4.5:1 contrast.
+
+### 26.2 User Journey & Key Screens
+
+Stage A — Landing & Onboarding
+- Landing: Above‑the‑fold login/signup; below‑the‑fold features (screenshots, bullets).
+- Onboarding (mandatory, multi‑step; one question/screen):
+  1) Role(s) sought (chips + free text)
+  2) Experience level (Student, Junior, Mid, Senior, Lead)
+  3) Location preference (Remote/Hybrid/On‑site + city)
+  4) Skills to include/exclude (tag input)
+  5) Company type (Startup/Corporation/Non‑profit/etc.)
+  6) CV upload (source of truth) or create generic CV
+  7) Jobs per batch (1–5 slider)
+  8) Search frequency (Daily/Weekly/Bi‑weekly/Monthly or 1–30 days)
+- Processing screen: “Gathering jobs → Embedding → Ranking”, notify when ready.
+
+Stage B — Core Application Loop
+- App shell: Desktop sidebar (Dashboard, Applications, Tracker, History, Settings); Mobile bottom bar.
+- Dashboard (Job Rating): current batch (≤5) as compact cards with 5–10 distilled insights
+  (Title, Company, Pay Range, Top 3 skills, Location, Posted age, Remote/Hybrid tag, match bullets).
+  Primary action: 1–5 star rating; progress bar (e.g., 3/5 rated); autosave + toasts.
+- Post‑rating: summarize ≥4★; user selects jobs → CTA “Prepare applications”.
+- Application Generation & Review: working state → per job CV/CL previews (editable), option to tweak generic CV first; actions: download PDF/copy/save.
+- Gated action: new search disabled until at least one application confirmed (unless no ≥4★).
+- Tracker: status board/table (Applied, Interview 1, Interview 2, Offer, Rejected, No Response, Accepted) with quick status changes and notes.
+- History: past batches, ratings, outcomes; filters + small trend metrics.
+
+Stage C — Settings & Profile
+- Preferences editor (all onboarding answers), CV management (replace/edit source), theme toggle, basic account.
+
+### 26.3 Navigation, Responsiveness, Accessibility
+- Sidebar collapses <1024px; bottom nav on mobile; keyboard navigable; ARIA on rating stars; focus rings.
+- Loading skeletons, empty/error states with guidance; toasts for optimistic updates/undo.
+
+### 26.4 Web App Structure (Next.js App Router)
+```
+web/src/app/(public)/page.tsx                # Landing (hero + marketing)
+web/src/app/(public)/auth/*                  # Login/Signup (NextAuth or custom)
+web/src/app/(onboarding)/onboarding/*        # 8‑step wizard
+web/src/app/(onboarding)/processing/page.tsx # First search wait screen
+web/src/app/(app)/layout.tsx                 # Auth shell (sidebar/header/bottom bar)
+web/src/app/(app)/dashboard/page.tsx         # Batch rating view
+web/src/app/(app)/review/page.tsx            # ≥4★ selection → prepare apps
+web/src/app/(app)/applications/page.tsx      # Generated CV/CL review/edit
+web/src/app/(app)/tracker/page.tsx           # Application status board/table
+web/src/app/(app)/history/page.tsx           # Activity history
+web/src/app/(app)/settings/page.tsx          # Preferences, CV, theme, account
+```
+
+### 26.5 Key Components
+- AppShell (sidebar/header/theme toggle/user menu), FormStepper, QuestionCard, TagInput, FileUpload
+- JobCardCompact, StarRating (1–5), BatchProgress, EmptyState, Skeleton
+- DocPreview (Markdown/HTML), EditDialog, PDFActions, StatusSelect, BoardColumn, TrackerTable
+- ThemeToggle (persisted), ToastProvider, ConfirmDialog
+
+### 26.6 Backend Additions for UX
+- Auth/users: NextAuth (Google/GitHub) on web; FastAPI verifies JWT; `users` table.
+- Preferences: `GET/PUT /preferences`
+- Batches: `POST /batches`, `GET /batches/current`, `POST /batches/{id}/ratings`, `POST /batches/{id}/lock`
+- Applications: `POST /applications/generate`, `GET /applications`, `PUT /applications/{id}` (status, notes)
+- CVs: `GET/PUT /cv` (generic CV file + editable form)
+- Gating: enforce one active unlocked batch per user
+
+### 26.7 Data Model (additions)
+- `users(id, email, name, created_at)`
+- `preferences(user_id, roles[], experience, location_mode, location_text, include_skills[], exclude_skills[], company_types[], batch_size, frequency_days, cv_url)`
+- `batches(id, user_id, created_at, locked_at)`
+- `batch_jobs(id, batch_id, job_id)`
+- `ratings(id, user_id, batch_id, job_id, stars INT, timestamp)`
+- `applications(id, user_id, job_id, batch_id, status, cv_doc, cl_doc, updated_at)`
+
+### 26.8 Implementation Plan (Phases)
+1) Theme + Shell: Tailwind tokens, dark/light toggle, AppShell.
+2) Landing + marketing skeleton with auth form placeholder.
+3) Onboarding wizard scaffold (8 steps) + processing screen.
+4) Dashboard Batch Rating MVP (compact cards, star ratings, progress).
+5) Post‑rating + Applications MVP (selection, working, previews).
+6) Tracker + History MVP (table/board + feed).
+7) Settings MVP (preferences editor, CV manager, theme).
+8) Auth + preferences/batches/ratings endpoints; JWT verification.
+9) Generation integration (CV/CL), doc editing, PDF export.
+10) Polish: copy, skeletons, toasts, accessibility, SEO/manifest/icons.

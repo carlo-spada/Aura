@@ -28,6 +28,7 @@ services:
       - PYTHONPATH=/app
       - DATABASE_URL=postgresql+psycopg://aura:aura@db:5432/aura
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
       - LOG_LEVEL=INFO
     volumes:
       - ./src:/app/src:ro
@@ -83,6 +84,8 @@ services:
       - ./models:/app/models:rw
       - ./logs:/app/logs:rw
       - ./outputs:/app/outputs:rw
+      - ./alembic.ini:/app/alembic.ini:ro
+      - ./alembic:/app/alembic:ro
     depends_on:
       - db
     restart: "no"
