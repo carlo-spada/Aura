@@ -17,12 +17,13 @@ import os
 from sqlalchemy import text
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+import datetime as dt
 
 from ..config import load_config
 from ..logging_config import setup_logging
 from ..ranking.rank import rank as rank_fn, RankedItem
 from ..db.session import get_session, get_database_url
-from ..db.models import Job, Rating
+from ..db.models import Job, Rating, User, Preferences
 from .auth import get_current_user
 
 
@@ -277,3 +278,86 @@ def create_rating(r: RatingIn) -> dict:
         )
         session.add(rating)
     return {"ok": True}
+
+
+class PreferencesIn(BaseModel):
+    roles: Optional[List[str]] = None
+    experience: Optional[str] = None
+    location_mode: Optional[str] = None
+    location_text: Optional[str] = None
+    include_skills: Optional[List[str]] = None
+    exclude_skills: Optional[List[str]] = None
+    company_types: Optional[List[str]] = None
+    batch_size: Optional[int] = None
+    frequency_days: Optional[int] = None
+    cv_url: Optional[str] = None
+
+
+class PreferencesOut(PreferencesIn):
+    user_id: int
+
+
+def _get_or_create_user(session, claims: dict) -> User:
+    email = claims.get("email")
+    sub = claims.get("sub")
+    q = session.query(User)
+    if email:
+        user = q.filter(User.email == email).first()
+        if user:
+            if sub and not user.sub:
+                user.sub = sub
+            return user
+    if sub:
+        user = q.filter(User.sub == sub).first()
+        if user:
+            if email and not user.email:
+                user.email = email
+            return user
+    # create new
+    user = User(email=email, sub=sub, name=claims.get("name"), created_at=dt.datetime.utcnow())
+    session.add(user)
+    session.flush()
+    return user
+
+
+@app.get("/preferences", response_model=PreferencesOut)
+def get_preferences(claims: dict = Depends(get_current_user)):
+    if not claims:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_session() as session:
+        user = _get_or_create_user(session, claims)
+        prefs = session.query(Preferences).filter(Preferences.user_id == user.id).first()
+        if not prefs:
+            prefs = Preferences(user_id=user.id)
+            session.add(prefs)
+            session.flush()
+        return PreferencesOut(
+            user_id=user.id,
+            roles=prefs.roles,
+            experience=prefs.experience,
+            location_mode=prefs.location_mode,
+            location_text=prefs.location_text,
+            include_skills=prefs.include_skills,
+            exclude_skills=prefs.exclude_skills,
+            company_types=prefs.company_types,
+            batch_size=prefs.batch_size,
+            frequency_days=prefs.frequency_days,
+            cv_url=prefs.cv_url,
+        )
+
+
+@app.put("/preferences", response_model=PreferencesOut)
+def put_preferences(payload: PreferencesIn, claims: dict = Depends(get_current_user)):
+    if not claims:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with get_session() as session:
+        user = _get_or_create_user(session, claims)
+        prefs = session.query(Preferences).filter(Preferences.user_id == user.id).first()
+        if not prefs:
+            prefs = Preferences(user_id=user.id)
+            session.add(prefs)
+        # Update fields
+        for field, value in payload.dict(exclude_unset=True).items():
+            setattr(prefs, field, value)
+        session.flush()
+        return PreferencesOut(user_id=user.id, **payload.dict(exclude_unset=True))

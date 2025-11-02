@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, LargeBinary, String, Text, UniqueConstraint
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, LargeBinary, String, Text, UniqueConstraint, JSON
 from sqlalchemy.orm import declarative_base, relationship
 
 
@@ -54,3 +54,29 @@ class Outcome(Base):
 
     job = relationship("Job", back_populates="outcomes")
 
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True)
+    email = Column(String, unique=True, nullable=True)
+    sub = Column(String, unique=True, nullable=True)  # auth provider subject
+    name = Column(String, nullable=True)
+    created_at = Column(DateTime)
+
+
+class Preferences(Base):
+    __tablename__ = "preferences"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
+    roles = Column(JSON, nullable=True)
+    experience = Column(String, nullable=True)
+    location_mode = Column(String, nullable=True)  # remote/hybrid/on-site
+    location_text = Column(String, nullable=True)
+    include_skills = Column(JSON, nullable=True)
+    exclude_skills = Column(JSON, nullable=True)
+    company_types = Column(JSON, nullable=True)
+    batch_size = Column(Integer, nullable=True)
+    frequency_days = Column(Integer, nullable=True)
+    cv_url = Column(String, nullable=True)

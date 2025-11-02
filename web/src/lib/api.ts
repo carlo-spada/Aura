@@ -11,6 +11,19 @@ export type Job = {
 
 export type ScoredJob = Job & { score: number }
 
+export type Preferences = {
+  roles?: string[]
+  experience?: string
+  location_mode?: string
+  location_text?: string
+  include_skills?: string[]
+  exclude_skills?: string[]
+  company_types?: string[]
+  batch_size?: number
+  frequency_days?: number
+  cv_url?: string
+}
+
 async function get<T>(path: string): Promise<T> {
   // Client-side fetch; avoid Next.js server-only options
   const res = await fetch(`${API_URL}${path}`)
@@ -27,4 +40,26 @@ export const api = {
     get(`/search?q=${encodeURIComponent(q)}&k=${k}`),
   rank: (q: string, k = 50, top = 10): Promise<ScoredJob[]> =>
     get(`/rank?q=${encodeURIComponent(q)}&k=${k}&top=${top}`),
+}
+
+export const apiAuth = {
+  putPreferences: async (prefs: Preferences, token: string): Promise<Preferences> => {
+    const res = await fetch(`${API_URL}/preferences`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(prefs),
+    })
+    if (!res.ok) throw new Error(`API error ${res.status}`)
+    return res.json()
+  },
+  getPreferences: async (token: string): Promise<Preferences> => {
+    const res = await fetch(`${API_URL}/preferences`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) throw new Error(`API error ${res.status}`)
+    return res.json()
+  },
 }

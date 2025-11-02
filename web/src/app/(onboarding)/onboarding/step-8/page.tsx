@@ -1,7 +1,14 @@
+"use client"
 import Link from 'next/link'
 import { Stepper } from '../Stepper'
+import { useSession } from 'next-auth/react'
+import { apiAuth } from '../../../../lib/api'
+import { useState } from 'react'
 
 export default function Step8() {
+  const { data } = useSession()
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   return (
     <div className="container mx-auto max-w-2xl px-4 py-10">
       <Stepper step={8} />
@@ -13,9 +20,27 @@ export default function Step8() {
       </div>
       <div className="mt-6 flex justify-between">
         <Link href="/onboarding/step-7" className="rounded border border-neutral-800 px-4 py-2 hover:bg-neutral-900">Back</Link>
-        <Link href="/onboarding/processing" className="rounded bg-neutral-100 px-4 py-2 text-neutral-900 hover:bg-white dark:bg-neutral-200">Finish</Link>
+        <button
+          disabled={!data?.token || saving}
+          onClick={async () => {
+            if (!data?.token) return
+            setSaving(true)
+            setError(null)
+            try {
+              await apiAuth.putPreferences({ frequency_days: 7, batch_size: 5 }, (data as any).token as string)
+              window.location.href = '/onboarding/processing'
+            } catch (e: any) {
+              setError(e?.message || String(e))
+            } finally {
+              setSaving(false)
+            }
+          }}
+          className="rounded bg-neutral-100 px-4 py-2 text-neutral-900 hover:bg-white disabled:opacity-50 dark:bg-neutral-200"
+        >
+          {saving ? 'Saving…' : 'Finish'}
+        </button>
       </div>
+      {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
     </div>
   )
 }
-
