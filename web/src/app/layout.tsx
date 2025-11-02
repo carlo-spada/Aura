@@ -2,6 +2,7 @@ import './globals.css'
 import type { Metadata, Viewport } from 'next'
 import { ThemeProvider } from '../components/ThemeProvider'
 import { AuthProvider } from '../components/AuthProvider'
+import { I18nProvider } from '../components/I18nProvider'
 
 export const metadata: Metadata = {
   title: 'AURA',
@@ -18,9 +19,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <body>
         <AuthProvider>
-          <ThemeProvider>
-            {children}
-          </ThemeProvider>
+          <I18nProvider>
+            <ThemeProvider>
+              {children}
+            </ThemeProvider>
+          </I18nProvider>
         </AuthProvider>
       </body>
     </html>

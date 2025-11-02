@@ -1,8 +1,11 @@
 import { ThemeToggle } from '../../components/ThemeToggle'
+import { LanguageSwitcher } from '../../components/LanguageSwitcher'
 import { BatchProvider } from '../../components/BatchContext'
 import Link from 'next/link'
+import { useI18n } from '../../components/I18nProvider'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
+  const { t } = useI18n()
   return (
     <div className="min-h-screen bg-neutral-50 text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
       <div className="mx-auto max-w-7xl px-4 lg:px-6">
@@ -10,16 +13,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {/* Sidebar */}
           <aside className="hidden w-60 shrink-0 lg:block">
             <div className="sticky top-6 rounded-xl border border-neutral-200/10 bg-neutral-900/30 p-4 dark:border-neutral-800">
-              <div className="mb-6 flex items-center justify-between">
+              <div className="mb-6 flex items-center justify-between gap-3">
                 <Link href="/" className="text-lg font-semibold">AURA</Link>
-                <ThemeToggle />
+                <div className="flex items-center gap-2">
+                  <LanguageSwitcher />
+                  <ThemeToggle />
+                </div>
               </div>
               <nav className="space-y-2 text-sm">
-                <AppNavLink href="/dashboard" label="Dashboard" />
-                <AppNavLink href="/applications" label="Applications" />
-                <AppNavLink href="/tracker" label="Tracker" />
-                <AppNavLink href="/history" label="History" />
-                <AppNavLink href="/settings" label="Settings" />
+                <AppNavLink href="/dashboard" label={t('nav_dashboard')} />
+                <AppNavLink href="/applications" label={t('nav_applications')} />
+                <AppNavLink href="/tracker" label={t('nav_tracker')} />
+                <AppNavLink href="/history" label={t('nav_history')} />
+                <AppNavLink href="/settings" label={t('nav_settings')} />
               </nav>
             </div>
           </aside>

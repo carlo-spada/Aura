@@ -1,16 +1,18 @@
 import Link from 'next/link'
+import { useI18n } from '../components/I18nProvider'
 
 export default function LandingPage() {
+  const { t } = useI18n()
   return (
     <div className="min-h-screen bg-neutral-50 text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
       {/* Hero */}
       <section className="mx-auto flex max-w-6xl flex-col items-center gap-6 px-4 py-16 sm:py-20 md:flex-row md:items-start">
         <div className="flex-1">
-          <h1 className="text-3xl font-semibold sm:text-4xl md:text-5xl">AURA — Your personal job search agent</h1>
-          <p className="mt-4 max-w-xl text-neutral-400">Discover roles, rate batches, and generate tailored applications with one click. AURA learns your preferences over time.</p>
+          <h1 className="text-3xl font-semibold sm:text-4xl md:text-5xl">{t('landing_title')}</h1>
+          <p className="mt-4 max-w-xl text-neutral-400">{t('landing_sub')}</p>
           <div className="mt-6 flex gap-3">
-            <Link href="/auth/login" className="rounded bg-neutral-100 px-4 py-2 text-neutral-900 hover:bg-white dark:bg-neutral-200">Log in</Link>
-            <Link href="/auth/signup" className="rounded border border-neutral-700 px-4 py-2 hover:bg-neutral-800">Sign up</Link>
+            <Link href="/auth/login" className="rounded bg-neutral-100 px-4 py-2 text-neutral-900 hover:bg-white dark:bg-neutral-200">{t('landing_login')}</Link>
+            <Link href="/auth/signup" className="rounded border border-neutral-700 px-4 py-2 hover:bg-neutral-800">{t('landing_signup')}</Link>
           </div>
         </div>
         <div className="flex-1 rounded-xl border border-neutral-800 bg-neutral-900/40 p-6">
@@ -27,9 +29,9 @@ export default function LandingPage() {
       {/* Marketing */}
       <section className="mx-auto max-w-6xl px-4 pb-20">
         <div className="grid gap-6 md:grid-cols-3">
-          <FeatureCard title="Rate in Batches" desc="Distilled job cards, 1–5 stars, fast feedback." />
-          <FeatureCard title="Tailored Applications" desc="One click CV/CL generation from your source CV." />
-          <FeatureCard title="Learned Preferences" desc="Improves weekly as you interact and apply." />
+          <FeatureCard title={t('feat_rate')} desc={t('feat_rate_desc')} />
+          <FeatureCard title={t('feat_generate')} desc={t('feat_generate_desc')} />
+          <FeatureCard title={t('feat_learn')} desc={t('feat_learn_desc')} />
         </div>
       </section>
     </div>
