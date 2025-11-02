@@ -13,6 +13,7 @@ from typing import List, Optional
 
 import numpy as np
 from fastapi import FastAPI, HTTPException, Query
+from sqlalchemy import text
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -101,7 +102,7 @@ def healthz() -> dict:
     # DB: attempt a trivial query
     try:
         with get_session() as session:
-            session.execute("SELECT 1")
+            session.execute(text("SELECT 1"))
         db_exists = True
     except Exception:
         db_exists = False
