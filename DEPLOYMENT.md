@@ -51,13 +51,13 @@ Target DB should be empty (no rows in jobs/ratings/outcomes) unless you pass `--
 
 ### Start services
 ```
-# Start API, dashboard, Postgres, and Caddy (HTTPS terminator)
-docker compose -f docker-compose.prod.yml up -d db api dashboard caddy
+# Start API, web (Next.js), Postgres, and Caddy (HTTPS terminator)
+docker compose -f docker-compose.prod.yml up -d db api web caddy
 ```
 
 Verify:
-- API health: https://api.aura.yourdomain.com/healthz
-- Dashboard: https://dashboard.aura.yourdomain.com/
+- API health: https://$AURA_API_DOMAIN/healthz
+- Web app: https://$AURA_DASHBOARD_DOMAIN/
 
 ### Kubernetes (optional)
 Prefer managed Postgres and an image in a registry. Two options are included:

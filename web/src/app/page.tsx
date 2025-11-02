@@ -15,8 +15,8 @@ export default function LandingPage() {
           <h1 className="text-3xl font-semibold sm:text-4xl md:text-5xl">{t('landing_title')}</h1>
           <p className="mt-4 max-w-xl text-neutral-400">{t('landing_sub')}</p>
           <div className="mt-6 flex gap-3">
-            <Link href="/auth/login" className="rounded bg-neutral-100 px-4 py-2 text-neutral-900 hover:bg-white dark:bg-neutral-200">{t('landing_login')}</Link>
-            <Link href="/auth/signup" className="rounded border border-neutral-700 px-4 py-2 hover:bg-neutral-800">{t('landing_signup')}</Link>
+            <Link href="/api/auth/signin" className="rounded bg-neutral-100 px-4 py-2 text-neutral-900 hover:bg-white dark:bg-neutral-200">{t('landing_login')}</Link>
+            <Link href="/onboarding" className="rounded border border-neutral-700 px-4 py-2 hover:bg-neutral-800">Get Started</Link>
           </div>
         </div>
         <div className="flex-1 rounded-xl border border-neutral-800 bg-neutral-900/40 p-6">
