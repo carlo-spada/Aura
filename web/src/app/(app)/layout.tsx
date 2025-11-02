@@ -1,3 +1,4 @@
+"use client"
 import { ThemeToggle } from '../../components/ThemeToggle'
 import { LanguageSwitcher } from '../../components/LanguageSwitcher'
 import { BatchProvider } from '../../components/BatchContext'
