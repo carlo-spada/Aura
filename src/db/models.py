@@ -28,8 +28,14 @@ class Job(Base):
     outcomes = relationship("Outcome", back_populates="job", cascade="all, delete-orphan")
 
 
+from sqlalchemy import UniqueConstraint
+
+
 class Rating(Base):
     __tablename__ = "ratings"
+    __table_args__ = (
+        UniqueConstraint('user_id', 'job_id', name='uq_ratings_user_job'),
+    )
 
     id = Column(Integer, primary_key=True)
     job_id = Column(Integer, ForeignKey("jobs.id"), nullable=False)

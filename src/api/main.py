@@ -275,18 +275,36 @@ def create_rating(r: RatingIn, claims: dict = Depends(get_current_user)) -> dict
         exists = session.query(Job.id).filter(Job.id == r.job_id).first()
         if not exists:
             raise HTTPException(status_code=404, detail="job not found")
-        rating = Rating(
-            job_id=r.job_id,
-            user_id=user.id,
-            stars=r.stars,
-            fit_score=r.fit_score if r.fit_score is not None else None,
-            interest_score=r.interest_score if r.interest_score is not None else None,
-            prestige_score=r.prestige_score if r.prestige_score is not None else None,
-            location_score=r.location_score if r.location_score is not None else None,
-            comment=(r.comment or "").strip() or None,
-            timestamp=dt.datetime.utcnow(),
+        existing = (
+            session.query(Rating)
+            .filter(Rating.user_id == user.id, Rating.job_id == r.job_id)
+            .first()
         )
-        session.add(rating)
+        if existing:
+            existing.stars = r.stars if r.stars is not None else existing.stars
+            if r.fit_score is not None:
+                existing.fit_score = r.fit_score
+            if r.interest_score is not None:
+                existing.interest_score = r.interest_score
+            if r.prestige_score is not None:
+                existing.prestige_score = r.prestige_score
+            if r.location_score is not None:
+                existing.location_score = r.location_score
+            existing.comment = (r.comment or "").strip() or existing.comment
+            existing.timestamp = dt.datetime.utcnow()
+        else:
+            rating = Rating(
+                job_id=r.job_id,
+                user_id=user.id,
+                stars=r.stars,
+                fit_score=r.fit_score if r.fit_score is not None else None,
+                interest_score=r.interest_score if r.interest_score is not None else None,
+                prestige_score=r.prestige_score if r.prestige_score is not None else None,
+                location_score=r.location_score if r.location_score is not None else None,
+                comment=(r.comment or "").strip() or None,
+                timestamp=dt.datetime.utcnow(),
+            )
+            session.add(rating)
     return {"ok": True}
 
 
