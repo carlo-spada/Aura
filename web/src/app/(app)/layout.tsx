@@ -1,4 +1,5 @@
 import { ThemeToggle } from '../../components/ThemeToggle'
+import { BatchProvider } from '../../components/BatchContext'
 import Link from 'next/link'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -24,7 +25,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </aside>
 
           {/* Content */}
-          <main className="flex-1 pb-16 lg:pb-6">{children}</main>
+          <main className="flex-1 pb-16 lg:pb-6">
+            <BatchProvider>{children}</BatchProvider>
+          </main>
         </div>
       </div>
 
@@ -48,4 +51,3 @@ function AppNavLink({ href, label }: { href: string; label: string }) {
     </Link>
   )
 }
-

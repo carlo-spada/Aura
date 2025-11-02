@@ -3,18 +3,22 @@ import { useEffect, useState } from 'react'
 import { api, type Job } from '../../../lib/api'
 import { Skeleton } from '../../../components/Skeleton'
 import { JobCard } from '../../../components/JobCard'
+import { StarRating } from '../../../components/StarRating'
+import { useBatch } from '../../../components/BatchContext'
+import Link from 'next/link'
 
 export default function DashboardPage() {
-  const [jobs, setJobs] = useState<Job[]>([])
-  const [loading, setLoading] = useState(true)
+  const { jobs, setJobs, ratings, rate } = useBatch()
+  const [loading, setLoading] = useState(jobs.length === 0)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (jobs.length > 0) return setLoading(false)
     api.jobs()
       .then((data) => setJobs(data))
       .catch((e) => setError(e?.message || String(e)))
       .finally(() => setLoading(false))
-  }, [])
+  }, [jobs.length, setJobs])
 
   return (
     <div>
@@ -30,11 +34,44 @@ export default function DashboardPage() {
       {!loading && (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {jobs.map((j) => (
-            <JobCard key={j.id} job={j} />
+            <div key={j.id} className="space-y-3">
+              <JobCard job={j} />
+              <div className="flex items-center justify-between">
+                <StarRating value={ratings[j.id] || 0} onChange={(v) => rate(j.id, v)} />
+                <span className="text-xs text-neutral-500">{ratings[j.id] ? `${ratings[j.id]}★` : 'Not rated'}</span>
+              </div>
+            </div>
           ))}
+        </div>
+      )}
+      {/* Footer progress */}
+      {!loading && jobs.length > 0 && (
+        <div className="sticky bottom-20 mt-6 rounded border border-neutral-800 bg-neutral-900/60 p-3 backdrop-blur lg:bottom-auto">
+          <BatchProgress total={jobs.length} rated={Object.keys(ratings).filter((k) => ratings[Number(k)] > 0).length} />
+          {Object.values(ratings).filter((v) => v > 0).length === jobs.length && (
+            <div className="mt-3 text-right">
+              <Link href="/review" className="rounded bg-neutral-100 px-4 py-2 text-neutral-900 hover:bg-white dark:bg-neutral-200">Review ≥4★</Link>
+            </div>
+          )}
         </div>
       )}
     </div>
   )
 }
 
+function BatchProgress({ total, rated }: { total: number; rated: number }) {
+  const pct = Math.round((rated / Math.max(total, 1)) * 100)
+  return (
+    <div>
+      <div className="flex items-center justify-between text-sm text-neutral-400">
+        <span>
+          Rated {rated}/{total}
+        </span>
+        <span>{pct}%</span>
+      </div>
+      <div className="mt-2 h-2 w-full overflow-hidden rounded bg-neutral-800">
+        <div className="h-full bg-neutral-500" style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  )
+}
