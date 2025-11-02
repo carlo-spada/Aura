@@ -13,6 +13,7 @@ from typing import List, Optional
 
 import numpy as np
 from fastapi import FastAPI, HTTPException, Query
+import os
 from sqlalchemy import text
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -82,9 +83,14 @@ def _query_top_k(text: str, k: int = 10):
 
 app = FastAPI(title="AURA API", version="0.1.0")
 
+# CORS: read allowed origins from env (comma-separated). Example:
+# ALLOWED_ORIGINS=https://aura.carlospada.me,https://www.aura.carlospada.me
+allowed = os.getenv("ALLOWED_ORIGINS")
+allowed_origins = [o.strip() for o in allowed.split(",") if o.strip()] if allowed else ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # adjust in production
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -140,6 +146,26 @@ def list_jobs(
             for r in query.limit(limit).offset(offset).all()
         ]
         return rows
+
+
+@app.get("/jobs/{job_id}", response_model=JobOut)
+def get_job(job_id: int) -> JobOut:
+    with get_session() as session:
+        r = (
+            session.query(Job.id, Job.title, Job.company, Job.location, Job.date_posted, Job.url)
+            .filter(Job.id == job_id)
+            .first()
+        )
+        if not r:
+            raise HTTPException(status_code=404, detail="job not found")
+        return JobOut(
+            id=int(r[0]),
+            title=r[1],
+            company=r[2],
+            location=r[3],
+            date_posted=r[4],
+            url=r[5],
+        )
 
 
 @app.get("/search", response_model=List[ScoredJob])

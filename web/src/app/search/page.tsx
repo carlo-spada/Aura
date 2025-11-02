@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { api, type ScoredJob } from '../../lib/api'
+import { Skeleton } from '../../components/Skeleton'
 import { JobCard } from '../../components/JobCard'
 
 export default function SearchPage() {
@@ -45,13 +46,21 @@ export default function SearchPage() {
           Search
         </button>
       </div>
-      {loading && <p className="opacity-70">Searching…</p>}
+      {loading && (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-28" />
+          ))}
+        </div>
+      )}
       {error && <p className="text-red-400">{error}</p>}
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        {results.map((j) => (
-          <JobCard key={j.id} job={j} score={j.score} />
-        ))}
-      </div>
+      {!loading && (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {results.map((j) => (
+            <JobCard key={j.id} job={j} score={j.score} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

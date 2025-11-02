@@ -27,6 +27,7 @@ services:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app
       - DATABASE_URL=postgresql+psycopg://aura:aura@db:5432/aura
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
       - LOG_LEVEL=INFO
     volumes:
       - ./src:/app/src:ro

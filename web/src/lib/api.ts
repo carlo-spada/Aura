@@ -22,6 +22,7 @@ export const api = {
   health: (): Promise<{ status: string; db: boolean; index: boolean }> => get(`/healthz`),
   jobs: (q?: string): Promise<Job[]> =>
     get(`/jobs${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+  job: (id: number): Promise<Job> => get(`/jobs/${id}`),
   search: (q: string, k = 10): Promise<ScoredJob[]> =>
     get(`/search?q=${encodeURIComponent(q)}&k=${k}`),
   rank: (q: string, k = 50, top = 10): Promise<ScoredJob[]> =>

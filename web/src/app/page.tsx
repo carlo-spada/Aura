@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { api, type Job } from '../lib/api'
+import { Skeleton } from '../components/Skeleton'
 import { JobCard } from '../components/JobCard'
 
 export default function HomePage() {
@@ -19,13 +20,21 @@ export default function HomePage() {
   return (
     <div className="container">
       <h2 className="mb-3 text-lg font-semibold">Recent Jobs</h2>
-      {loading && <p className="opacity-70">Loading…</p>}
+      {loading && (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-28" />
+          ))}
+        </div>
+      )}
       {error && <p className="text-red-400">{error}</p>}
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        {jobs.map((j) => (
-          <JobCard key={j.id} job={j} />
-        ))}
-      </div>
+      {!loading && (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {jobs.map((j) => (
+            <JobCard key={j.id} job={j} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
