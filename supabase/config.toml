@@ -1,0 +1,39 @@
+# Supabase Configuration
+
+[project]
+id = "your-project-id" # Replace with your actual project ID
+
+[api]
+enabled = true
+schemas = ["public"]
+extra_schemas = ["extensions"]
+max_rows = 1000
+
+[auth]
+enabled = true
+
+[auth.providers]
+email = { enabled = true, confirm_email = true }
+google = { enabled = true }
+github = { enabled = false }
+
+[auth.external]
+redirect_uri = "http://localhost:3000/auth/callback"
+
+[storage]
+enabled = true
+
+[[storage.buckets]]
+name = "resumes"
+public = false
+allowed_mime_types = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]
+max_file_size = 10485760 # 10MB
+
+[[storage.buckets]]
+name = "generated-documents"
+public = false
+allowed_mime_types = ["application/pdf"]
+max_file_size = 10485760 # 10MB
+
+[realtime]
+enabled = true
