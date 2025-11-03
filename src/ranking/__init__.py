@@ -1,2 +1,0 @@
-"""Ranking utilities for AURA."""
-

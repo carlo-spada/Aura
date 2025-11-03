@@ -30,3 +30,16 @@ models/*
 
 # Docker
 .docker/
+
+# Node.js / Next.js
+node_modules/
+.next/
+web/.next/
+web/node_modules/
+web/.vercel/
+web/out/
+
+# Env files (never commit secrets)
+.env
+.env.*
+web/.env.local

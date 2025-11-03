@@ -1,24 +1,2 @@
-numpy
-pandas
-scikit-learn
-faiss-cpu
-sentence-transformers
-torch
-stable-baselines3
-gymnasium
-PyYAML
-SQLAlchemy
-alembic
-psycopg[binary]
-streamlit
-plotly
-matplotlib
-spacy
-keybert
-reportlab
-rich
-click
-python-dotenv
-fastapi
-uvicorn
-python-jose[cryptography]
+-r services/api/requirements.txt
+

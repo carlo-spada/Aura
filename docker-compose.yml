@@ -1,96 +1,32 @@
+version: "3.9"
 services:
-  db:
-    image: postgres:16-alpine
-    container_name: aura-db
-    environment:
-      - POSTGRES_DB=aura
-      - POSTGRES_USER=aura
-      - POSTGRES_PASSWORD=aura
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U aura -d aura"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-  aura:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: aura:latest
-    container_name: aura-app
-    profiles: ["cli"]
-    working_dir: /app
-    command: ["python", "-m", "src.main"]
-    environment:
-      - PYTHONUNBUFFERED=1
-      - PYTHONPATH=/app
-      - DATABASE_URL=postgresql+psycopg://aura:aura@db:5432/aura
-    env_file:
-      - .env
-    volumes:
-      - ./src:/app/src:rw
-      - ./config.yaml:/app/config.yaml:ro
-      - ./data:/app/data:rw
-      - ./models:/app/models:rw
-      - ./logs:/app/logs:rw
-      - ./outputs:/app/outputs:rw
-    depends_on:
-      - db
-    restart: "no"
-
-  dashboard:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: aura:latest
-    container_name: aura-dashboard
-    working_dir: /app
-    command: ["streamlit", "run", "src/dashboard/app.py", "--server.port=8501", "--server.address=0.0.0.0"]
-    environment:
-      - PYTHONUNBUFFERED=1
-      - PYTHONPATH=/app
-      - DATABASE_URL=postgresql+psycopg://aura:aura@db:5432/aura
-    env_file:
-      - .env
-    volumes:
-      - ./src:/app/src:rw
-      - ./config.yaml:/app/config.yaml:ro
-      - ./data:/app/data:rw
-      - ./models:/app/models:rw
-      - ./logs:/app/logs:rw
-      - ./outputs:/app/outputs:rw
-    ports:
-      - "8501:8501"
-    depends_on:
-      - db
-    restart: unless-stopped
-
   api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: aura:latest
-    container_name: aura-api
-    working_dir: /app
-    command: ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
-    environment:
-      - PYTHONUNBUFFERED=1
-      - PYTHONPATH=/app
-      - DATABASE_URL=postgresql+psycopg://aura:aura@db:5432/aura
-    volumes:
-      - ./src:/app/src:rw
-      - ./config.yaml:/app/config.yaml:ro
-      - ./data:/app/data:rw
-      - ./models:/app/models:rw
-      - ./logs:/app/logs:rw
-      - ./outputs:/app/outputs:rw
+    build: ./services/api
+    container_name: aura_api
     ports:
       - "8000:8000"
-    depends_on:
-      - db
+    environment:
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000}
+      - AURA_DATA_DIR=/app/data
+      - CLERK_ISSUER=${CLERK_ISSUER}
+      - CLERK_JWKS_URL=${CLERK_JWKS_URL}
+      - DATABASE_URL=${DATABASE_URL}
     restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+
+  # Postgres is optional at this stage; API stubs don't require it yet.
+  # db:
+  #   image: postgres:16-alpine
+  #   environment:
+  #     POSTGRES_USER: aura
+  #     POSTGRES_PASSWORD: aura
+  #     POSTGRES_DB: aura
+  #   volumes:
+  #     - pgdata:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+  #   restart: unless-stopped
 
 volumes:
   pgdata:

@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: aura-api
+    env: docker
+    plan: free
+    autoDeploy: true
+    dockerfilePath: services/api/Dockerfile
+    buildContext: services/api
+    envVars:
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: AURA_DATA_DIR
+        value: /app/data
+    healthCheckPath: /healthz
+    preDeployCommand: "python -m src.db"
+    numInstances: 1
+    region: oregon
+    disk:
+      name: data
+      mountPath: /app/data
+      sizeGB: 1
+
