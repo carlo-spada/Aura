@@ -1,105 +1,366 @@
 # AURA — Autonomous Job Copilot
 
-AURA helps users find, rate, and win better jobs with a fast, guided experience. The product vision centers on:
-- A frictionless UI (Next.js) with modern auth (Clerk) and API-backed state
-- AI services in Python for job sourcing, ranking, and document generation
-- A feedback loop from ratings and application outcomes to improve recommendations
+AURA helps users find, rate, and win better jobs with AI-powered job matching and application generation. Our mission is to democratize access to career opportunities through intelligent automation and personalized recommendations.
 
-See the product/UX vision in `AURA_Specification.md`.
+## 🎯 Value Proposition
 
-## Architecture (New Vision)
+- **AI-Powered Job Matching**: Advanced algorithms that understand your unique profile and preferences
+- **Smart Application Generation**: Tailored CVs and cover letters for each opportunity
+- **Continuous Learning**: Feedback loop from ratings and outcomes to improve recommendations
+- **Career Growth Insights**: Proactive guidance on skills gaps and advancement opportunities
 
-- Frontend: Next.js (App Router) + shadcn/ui + Tailwind; hosted on Vercel
-- Auth: Clerk (client SDK + server verification)
-- State: API + Postgres (Supabase) for users, preferences, qualifications, ratings, applications
-- AI Services: Python/FastAPI microservices (job sourcing, ranking, generation) deployable as serverless
-- Database: Postgres for jobs and AI artifacts; pgvector planned for vector search (FAISS used locally)
+See the full product vision in `AURA_Specification.md`.
 
-## Status
+## 💳 Subscription Tiers
 
-- Fresh scaffolds for web (Next.js + Clerk) and API (FastAPI) are added.
-- API exposes stub endpoints for `/healthz`, `/search`, and `/rank`.
+| Plan | Monthly Price | Annual Price | Features |
+|------|--------------|--------------|----------|
+| **Free** | $0 | $0 | • 2 personalized job matches/month<br>• Basic dashboard<br>• Manual application tracking |
+| **Plus** | $5 USD | $48 USD ($4/mo) | • 6 personalized job matches/month<br>• AI-generated applications<br>• Priority ranking<br>• Application analytics |
+| **Premium** | $10 USD | $96 USD ($8/mo) | • Unlimited job matches<br>• Advanced AI applications<br>• Career growth planning<br>• 1-on-1 AI coaching<br>• API access |
 
-## Quickstart
+## 🏗 Architecture
 
-### Web App (Clerk)
-1) Setup environment
-   - `cd web`
-   - `cp .env.local.example .env.local` and fill:
-     - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`
-     - `NEXT_PUBLIC_API_URL` (Python API origin; dev: `http://localhost:8000`)
-2) Install and run
-   - `npm install`
-   - `npm run dev` (Next.js at http://localhost:3000)
+### Production Stack
+- **Frontend**: Next.js 14 (App Router) + shadcn/ui + Tailwind CSS → Deployed on **Vercel**
+- **Authentication**: Supabase Auth (replacing Clerk for unified auth/database)
+- **Database**: Supabase (PostgreSQL with pgvector for semantic search)
+- **Payments**: Stripe (subscription management + usage-based billing)
+- **AI Backend**: Python/FastAPI microservices → Deployed as serverless containers
+- **Vector Search**: pgvector (Supabase) for production, FAISS for local development
+
+### Deployment Strategy
+- **Frontend**: Vercel (automatic deployments from GitHub)
+- **Database & Auth**: Supabase Cloud (managed PostgreSQL + Auth)
+- **AI Services**:
+  - Option A: AWS Lambda or Google Cloud Run (serverless containers)
+  - Option B: Small VPS with Docker Swarm/K3s for cost optimization
+- **Monitoring**: Vercel Analytics + Supabase Dashboard + Custom metrics
+
+## 🚀 Current Status
+
+### Completed
+- ✅ Next.js frontend scaffold with App Router
+- ✅ Basic API structure (FastAPI)
+- ✅ Authentication setup (migrating Clerk → Supabase)
+- ✅ Initial job search endpoints
+
+### In Progress
+- 🔄 Supabase integration (auth + database)
+- 🔄 Stripe payment integration
+- 🔄 Production deployment configuration
+
+### Next Steps
+- ⏳ AI ranking algorithm implementation
+- ⏳ Application generation service
+- ⏳ User onboarding flow
+- ⏳ Dashboard with job cards UI
+
+## 🛠 Quickstart
+
+### Prerequisites
+- Node.js 18+ and npm
+- Python 3.11+
+- Supabase account (free tier works)
+- Stripe account (test mode for development)
+
+### Web App Setup (Supabase + Stripe)
+1) **Environment Setup**
+   ```bash
+   cd web
+   cp .env.local.example .env.local
+   ```
+   Configure `.env.local`:
+   ```env
+   # Supabase
+   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+   SUPABASE_SERVICE_ROLE_KEY=your_service_key
+
+   # Stripe
+   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your_stripe_pk_test
+   STRIPE_SECRET_KEY=your_stripe_sk_test
+   STRIPE_WEBHOOK_SECRET=your_webhook_secret
+
+   # API
+   NEXT_PUBLIC_API_URL=http://localhost:8000
+   ```
+
+2) **Install and Run**
+   ```bash
+   npm install
+   npm run dev
+   ```
+   Access at http://localhost:3000
 
 ### Python API Service
-- Python: 3.11; OS: Linux/macOS recommended
 
-Local (no Docker)
-1) Create a virtualenv and install deps:
-   - `cd services/api`
-   - `python -m venv .venv && source .venv/bin/activate`
-   - `pip install -r requirements.txt`
-2) Run API:
-   - `uvicorn api.main:app --reload --port 8000 --app-dir src`
+**Local Development**
+1) **Setup Virtual Environment**
+   ```bash
+   cd services/api
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
 
-Ingest and query
-- Ingest sample jobs from RemoteOK (best-effort; falls back on empty if offline):
-  - `curl -X POST 'http://localhost:8000/ingest/remoteok?q=engineer&limit=50'`
-- List jobs:
-  - `curl 'http://localhost:8000/jobs?k=20'`
-- Search jobs:
-  - `curl 'http://localhost:8000/jobs?q=frontend&k=20'`
-- Rank jobs:
-  - `curl 'http://localhost:8000/rank?q=frontend&k=50&top=10'`
+2) **Configure Environment**
+   ```bash
+   cp .env.example .env
+   ```
+   Configure `.env`:
+   ```env
+   # Supabase
+   SUPABASE_URL=your_supabase_url
+   SUPABASE_SERVICE_KEY=your_service_key
 
-Docker Compose
-- From repo root: `docker compose up -d api` → http://localhost:8000/healthz
+   # OpenAI/Anthropic for AI features
+   OPENAI_API_KEY=your_api_key  # or ANTHROPIC_API_KEY
 
-### Deploy
+   # CORS
+   ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
+   ```
 
-- Web (Vercel)
-  - Import the `web/` subdirectory in Vercel.
-  - Set env vars:
-    - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`
-    - `NEXT_PUBLIC_API_URL` (point to your deployed API URL)
-  - Build command: default (`npm run build`).
+3) **Run the API**
+   ```bash
+   uvicorn api.main:app --reload --port 8000 --app-dir src
+   ```
 
-- API (Render)
-  - Use `render.yaml` in repo root to create a Docker web service for the API.
-  - Set env vars:
-    - `ALLOWED_ORIGINS`: e.g. `https://your-vercel-domain.vercel.app,https://your-prod-domain`
-    - `CLERK_ISSUER`, `CLERK_JWKS_URL`
-    - `DATABASE_URL` (Supabase Postgres pooled URL) or omit to use SQLite volume, `AURA_DATA_DIR=/app/data`
-  - Health check: `/healthz`
+**Docker Development**
+```bash
+docker compose up -d api
+```
+Access at http://localhost:8000/docs
 
-Alternatively deploy API to Fly.io/Cloud Run using `services/api/Dockerfile` directly.
+### API Endpoints
 
-### Key API Endpoints (Python)
-- Health: `GET /healthz`
-- Jobs: `GET /jobs`, `GET /jobs/{id}`
-- Search/Rank: `GET /jobs?q=...&k=50`, `GET /rank?q=...&k=50&top=10`
-- Auth-protected (Clerk JWT): `/me/preferences`, `/me/qualifications`, `/me/ratings`, `/me/applications`, `/me/applications/status`
+**Public Endpoints**
+- `GET /healthz` - Health check
+- `GET /jobs` - List available jobs
+- `GET /jobs/search?q=frontend&limit=20` - Search jobs
+- `GET /subscription/plans` - Get subscription tiers
 
-## Project Layout
-- `web/` Next.js app (Clerk, pages, components)
-- `services/api/` FastAPI app (stubs for search/rank)
-- `data/` DB and artifacts; `logs/` runtime logs; `outputs/` generated docs (future)
+**Authenticated Endpoints** (requires Supabase JWT)
+- `POST /jobs/rank` - Get personalized job rankings
+- `POST /applications/generate` - Generate tailored CV/cover letter
+- `GET /me/profile` - User profile and preferences
+- `GET /me/applications` - Track applications
+- `GET /me/usage` - Check usage limits
 
-## Configuration
-- `web/.env.local`: Clerk keys and `NEXT_PUBLIC_API_URL`
-- API env: `ALLOWED_ORIGINS`, `CLERK_ISSUER`, `CLERK_JWKS_URL`, `DATABASE_URL`
+## 🚀 Deployment
 
-## Roadmap (MVP)
-- Milestone 1: Clerk auth + Convex preferences/qualifications onboarding
-- Milestone 2: Asynchronous job search & cache (Python) + ranking endpoint
-- Milestone 3: Dashboard with batch rating (2–6 jobs) and application creation stub (Convex)
-- Milestone 4: Application generation (Python) and Applications tracking with statuses (incl. interviewing_1/2/3)
+### Frontend (Vercel)
 
-## Development
-- Python dev: `pip install -r requirements-dev.txt`; format with `black` and `ruff`
-- Web dev: run `npm run dev`
-- CI: lint/type-check/build; Docker build for services
+1) **Connect GitHub Repository**
+   - Import project in Vercel Dashboard
+   - Select `web/` as root directory
 
-## License
-MIT — see `LICENSE`.
+2) **Environment Variables**
+   ```env
+   # Production Supabase
+   NEXT_PUBLIC_SUPABASE_URL=
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=
+   SUPABASE_SERVICE_ROLE_KEY=
+
+   # Production Stripe
+   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
+   STRIPE_SECRET_KEY=
+   STRIPE_WEBHOOK_SECRET=
+
+   # API URL
+   NEXT_PUBLIC_API_URL=https://your-api-domain.com
+   ```
+
+3) **Deploy**
+   - Automatic deployments on push to main
+   - Preview deployments for PRs
+
+### Backend (Microservices)
+
+**Option A: Serverless (Recommended for scalability)**
+- **Google Cloud Run**:
+  ```bash
+  gcloud run deploy aura-api \
+    --image gcr.io/PROJECT_ID/aura-api \
+    --platform managed \
+    --region us-central1 \
+    --allow-unauthenticated
+  ```
+
+- **AWS Lambda** (via Serverless Framework):
+  ```yaml
+  # serverless.yml
+  service: aura-api
+  provider:
+    name: aws
+    runtime: python3.11
+  functions:
+    api:
+      image: aura-api:latest
+      events:
+        - httpApi: '*'
+  ```
+
+**Option B: VPS (Cost-effective)**
+- Deploy to DigitalOcean/Linode/Hetzner ($5-20/month)
+- Use Docker Swarm or K3s for orchestration
+- Example deployment script included in `/deploy/vps-setup.sh`
+
+### Database (Supabase)
+
+1) **Create Supabase Project**
+   - Sign up at supabase.com
+   - Create new project (free tier includes 500MB database)
+
+2) **Run Migrations**
+   ```bash
+   npx supabase db push
+   ```
+
+3) **Enable pgvector**
+   ```sql
+   CREATE EXTENSION vector;
+   ```
+
+### Payments (Stripe)
+
+1) **Setup Products in Stripe Dashboard**
+   - Create "Plus" and "Premium" products
+   - Set up monthly and annual price points
+
+2) **Configure Webhooks**
+   - Endpoint: `https://your-domain.com/api/webhooks/stripe`
+   - Events: `checkout.session.completed`, `customer.subscription.*`
+
+3) **Test with Stripe CLI**
+   ```bash
+   stripe listen --forward-to localhost:3000/api/webhooks/stripe
+   ```
+
+## 📁 Project Structure
+
+```
+aura/
+├── web/                    # Next.js frontend
+│   ├── app/               # App router pages
+│   ├── components/        # React components
+│   ├── lib/              # Utilities and hooks
+│   └── public/           # Static assets
+├── services/
+│   └── api/              # Python FastAPI backend
+│       ├── src/          # Source code
+│       ├── tests/        # Test files
+│       └── Dockerfile    # Container definition
+├── supabase/             # Database migrations & functions
+│   ├── migrations/       # SQL migrations
+│   └── functions/        # Edge functions
+├── deploy/               # Deployment scripts
+└── docs/                 # Documentation
+
+```
+
+## 🗓 Launch Roadmap
+
+### Phase 1: Foundation (Week 1-2)
+- [x] Project setup and documentation
+- [ ] Supabase auth integration
+- [ ] Database schema and migrations
+- [ ] Stripe subscription setup
+- [ ] Basic user onboarding flow
+
+### Phase 2: Core Features (Week 3-4)
+- [ ] Job ingestion pipeline
+- [ ] AI ranking algorithm
+- [ ] Dashboard UI with job cards
+- [ ] Rating system implementation
+- [ ] Usage tracking and limits
+
+### Phase 3: AI Services (Week 5-6)
+- [ ] Application generation service
+- [ ] CV/Cover letter customization
+- [ ] Career growth recommendations
+- [ ] Chatbot integration
+
+### Phase 4: Polish & Launch (Week 7-8)
+- [ ] Payment flow testing
+- [ ] Performance optimization
+- [ ] Security audit
+- [ ] Beta user testing
+- [ ] Production deployment
+
+## 🔧 Development
+
+### Code Quality
+```bash
+# Python
+pip install -r requirements-dev.txt
+black services/api/src
+ruff check services/api/src
+
+# TypeScript
+cd web
+npm run lint
+npm run type-check
+```
+
+### Testing
+```bash
+# Frontend tests
+cd web && npm test
+
+# API tests
+cd services/api
+pytest tests/
+```
+
+### Database Migrations
+```bash
+# Create new migration
+npx supabase migration new <name>
+
+# Apply migrations
+npx supabase db push
+
+# Reset database
+npx supabase db reset
+```
+
+## 🔐 Security Considerations
+
+- **Authentication**: Supabase Row Level Security (RLS) policies
+- **API Rate Limiting**: Implemented at edge (Vercel) and API level
+- **Payment Security**: PCI compliance via Stripe
+- **Data Privacy**: GDPR-compliant data handling
+- **Secrets Management**: Environment variables, never committed
+
+## 📊 Monitoring & Analytics
+
+- **Frontend**: Vercel Analytics + Web Vitals
+- **Backend**: Cloud Run/Lambda metrics
+- **Database**: Supabase Dashboard
+- **Errors**: Sentry integration
+- **Business Metrics**: Custom dashboard for MRR, churn, usage
+
+## 🤝 Contributing
+
+We welcome contributions! Please see `CONTRIBUTING.md` for guidelines.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit changes (`git commit -m 'Add AmazingFeature'`)
+4. Push to branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 📝 License
+
+MIT License - see `LICENSE` file for details.
+
+## 🆘 Support
+
+- **Documentation**: See `/docs` folder
+- **Issues**: GitHub Issues
+- **Email**: support@aura-jobs.com
+- **Discord**: [Join our community](https://discord.gg/aura-jobs)
+
+---
+Built with ❤️ to democratize career opportunities
