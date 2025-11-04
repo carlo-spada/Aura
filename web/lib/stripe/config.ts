@@ -1,9 +1,24 @@
 import Stripe from 'stripe'
 
-// Initialize Stripe
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-10-29.clover',
-  typescript: true,
+// Initialize Stripe lazily to avoid build-time errors
+let stripeInstance: Stripe | null = null
+
+export const getStripe = () => {
+  if (!stripeInstance && process.env.STRIPE_SECRET_KEY) {
+    stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2025-10-29.clover',
+      typescript: true,
+    })
+  }
+  return stripeInstance!
+}
+
+// Export for backward compatibility
+export const stripe = new Proxy({} as Stripe, {
+  get(target, prop) {
+    const instance = getStripe()
+    return instance[prop as keyof Stripe]
+  }
 })
 
 // Subscription tier configuration

@@ -1,6 +1,6 @@
 {
   "framework": "nextjs",
-  "buildCommand": "rm -rf app/\\(protected\\) app/\\(public\\) && npm run build",
+  "buildCommand": "rm -rf 'app/(protected)' 'app/(public)' app/\\(protected\\) app/\\(public\\) 2>/dev/null; npm run build",
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "cleanUrls": true,
