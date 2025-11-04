@@ -54,14 +54,7 @@ export default function PricingPage() {
       if (url) {
         window.location.href = url
       } else {
-        // Fallback to client-side redirect
-        const stripe = await stripePromise
-        if (stripe) {
-          const { error: stripeError } = await stripe.redirectToCheckout({ sessionId })
-          if (stripeError) {
-            throw stripeError
-          }
-        }
+        throw new Error('No checkout URL returned')
       }
     } catch (err: any) {
       setError(err.message || 'Something went wrong')

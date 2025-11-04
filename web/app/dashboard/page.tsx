@@ -6,7 +6,7 @@ import EmptyState from '@/components/EmptyState';
 import FindMatchesButton from '@/components/FindMatchesButton';
 
 export default async function DashboardPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/auth/login');
@@ -82,13 +82,13 @@ export default async function DashboardPage() {
         <div className="bg-white p-4 rounded-lg shadow-sm border">
           <div className="text-sm text-gray-600">Pending</div>
           <div className="text-2xl font-bold text-yellow-600">
-            {jobs?.filter(j => j.applications?.some(a => a.status === 'pending')).length || 0}
+            {jobs?.filter(j => j.applications?.some((a: any) => a.status === 'pending')).length || 0}
           </div>
         </div>
         <div className="bg-white p-4 rounded-lg shadow-sm border">
           <div className="text-sm text-gray-600">Match Rate</div>
           <div className="text-2xl font-bold text-indigo-600">
-            {jobs?.length > 0 ? Math.round((jobs.filter(j => j.match_score >= 80).length / jobs.length) * 100) : 0}%
+            {jobs && jobs.length > 0 ? Math.round((jobs.filter(j => j.match_score >= 80).length / jobs.length) * 100) : 0}%
           </div>
         </div>
       </div>

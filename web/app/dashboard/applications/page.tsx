@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 
 export default async function ApplicationsPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/auth/login');
