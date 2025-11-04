@@ -1,0 +1,25 @@
+# Ignore protected and public route groups if they exist
+app/(protected)
+app/(public)
+app/\(protected\)
+app/\(public\)
+
+# Python cache
+__pycache__
+*.py
+*.pyc
+
+# Temporary files
+*.tmp
+temp_*
+run_*.py
+fix_*.js
+fix_*.sql
+
+# IDE
+.vscode
+.idea
+
+# Local environment files
+.env.secret
+.env*.local
