@@ -1,8 +1,12 @@
-# Ignore protected and public route groups if they exist
+# Ignore protected and public route groups
 app/(protected)
 app/(public)
 app/\(protected\)
 app/\(public\)
+**/\(protected\)
+**/\(public\)
+**/(protected)
+**/(public)
 
 # Python cache
 __pycache__
@@ -15,6 +19,15 @@ temp_*
 run_*.py
 fix_*.js
 fix_*.sql
+setup_*.sh
+*.sh
+DEBUG_*.sql
+FINAL_*.sql
+FIX_*.sql
+SIMPLE_*.sql
+SETUP_*.md
+SUPABASE_*.md
+NEXT_*.md
 
 # IDE
 .vscode
@@ -23,3 +36,10 @@ fix_*.sql
 # Local environment files
 .env.secret
 .env*.local
+
+# Git
+.git
+.gitignore
+
+# Vercel
+.vercel
