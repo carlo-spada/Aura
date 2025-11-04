@@ -42,7 +42,14 @@
       "Bash(npm run build:*)",
       "Bash(git rm:*)",
       "Bash(git ls-tree:*)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(vercel whoami:*)",
+      "Bash(vercel link:*)",
+      "Bash(vercel ls:*)",
+      "Bash(vercel project:*)",
+      "Bash(vercel pull:*)",
+      "Bash(vercel:*)",
+      "Bash(git remote:*)"
     ],
     "deny": [],
     "ask": []
