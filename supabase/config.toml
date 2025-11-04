@@ -1,39 +1,41 @@
-# Supabase Configuration
-
-[project]
-id = "your-project-id" # Replace with your actual project ID
+project_id = "uwbcznagzanrxenyiqde"
 
 [api]
-enabled = true
-schemas = ["public"]
-extra_schemas = ["extensions"]
+port = 54321
+schemas = ["public", "storage", "extensions"]
+extra_search_path = ["public", "extensions"]
 max_rows = 1000
 
-[auth]
-enabled = true
+[db]
+port = 54322
+major_version = 17
 
-[auth.providers]
-email = { enabled = true, confirm_email = true }
-google = { enabled = true }
-github = { enabled = false }
+[studio]
+port = 54323
 
-[auth.external]
-redirect_uri = "http://localhost:3000/auth/callback"
+[inbucket]
+port = 54324
+smtp_port = 54325
+pop3_port = 54326
 
 [storage]
+file_size_limit = "50MiB"
+
+[auth]
+site_url = "http://localhost:3000"
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+
+[auth.external.google]
 enabled = true
+client_id = "env(GOOGLE_CLIENT_ID)"
+secret = "env(GOOGLE_CLIENT_SECRET)"
+redirect_uri = "http://localhost:3000/auth/callback"
 
-[[storage.buckets]]
-name = "resumes"
-public = false
-allowed_mime_types = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]
-max_file_size = 10485760 # 10MB
-
-[[storage.buckets]]
-name = "generated-documents"
-public = false
-allowed_mime_types = ["application/pdf"]
-max_file_size = 10485760 # 10MB
-
-[realtime]
-enabled = true
+[auth.external.github]
+enabled = false

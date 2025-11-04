@@ -24,7 +24,7 @@ CREATE FOREIGN DATA WRAPPER stripe_wrapper
 CREATE SERVER stripe_server
   FOREIGN DATA WRAPPER stripe_wrapper
   OPTIONS (
-    api_key 'your_stripe_secret_key',  -- Replace with your actual key
+    api_key 'YOUR_STRIPE_SECRET_KEY_HERE', -- Replace with your actual Stripe secret key
     api_url 'https://api.stripe.com/v1',
     api_version '2023-10-16'  -- Use latest Stripe API version
   );
