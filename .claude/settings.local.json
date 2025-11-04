@@ -36,7 +36,8 @@
       "Bash(/Users/carlo/Desktop/Projects/Aura/SUPABASE_CLI_SETUP.md )",
       "Bash(/Users/carlo/Desktop/Projects/Aura/NEXT_STEPS.md)",
       "Bash(git reset:*)",
-      "Bash(pip3 install:*)"
+      "Bash(pip3 install:*)",
+      "Bash(npm run dev)"
     ],
     "deny": [],
     "ask": []
