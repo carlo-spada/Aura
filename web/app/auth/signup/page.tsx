@@ -19,7 +19,7 @@ export default function SignupPage() {
     setLoading(true)
     setError(null)
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -34,7 +34,8 @@ export default function SignupPage() {
       setError(error.message)
       setLoading(false)
     } else {
-      router.push('/auth/verify-email')
+      // Redirect to onboarding after signup
+      router.push('/onboarding')
     }
   }
 
